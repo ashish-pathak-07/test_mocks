@@ -1,0 +1,1681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Replica - Pre-Drama Reader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            /* background-color: #121212; /* Page background - overridden by Tailwind bg-slate-900 */
+            color: #E0E0E0;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .bottom-nav-icon { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 1.5rem; width: 20%; cursor: pointer; }
+        .bottom-nav-icon.active { color: #8B5CF6; /* Primary-accent */ }
+        .bottom-nav-icon .nav-text { font-size: 0.65rem; margin-top: 2px; }
+
+        .nsfw-toggle { background-color: #374151; border-radius: 9999px; padding: 0.25rem; display: inline-flex; align-items: center; cursor: pointer; }
+        .nsfw-toggle span { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+        .nsfw-toggle .active-toggle { background-color: #4B5563; color: #F3F4F6; }
+        .nsfw-toggle .inactive-toggle { color: #9CA3AF; }
+
+        /* Modal Styles */
+        .modal-overlay-bg { background-color: rgba(0, 0, 0, 0.75); }
+        .create-post-modal-content, .example-modal-content, .detailed-drama-modal-content {
+            background-color: #1A1C24; /* Secondary-bg */
+            max-height: 95vh;
+        }
+
+        .format-tile {
+            border: 1px solid #2F2F3A;
+            background-color: transparent;
+            border-radius: 8px;
+            transition: transform 150ms ease-in-out, box-shadow 150ms ease-in-out, border-color 150ms ease-in-out;
+            cursor: pointer;
+            text-align: center;
+            padding: 16px;
+            flex: 1 1 calc(50% - 0.25rem);
+            min-width: 120px;
+            position: relative;
+        }
+        .format-tile:hover {
+            background-color: rgba(139, 92, 246, 0.10);
+            transform: scale(1.03);
+        }
+        .format-tile.selected {
+            border: 2px solid #8B5CF6;
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.25);
+        }
+        .format-tile:focus-visible {
+            outline: none;
+            border-color: #8B5CF6;
+            box-shadow: 0 0 0 2px #1A1C24, 0 0 0 4px #8B5CF6;
+        }
+        .format-tile i { font-size: 20px; margin-bottom: 8px; width: 24px; height: 24px; line-height: 24px; }
+        .format-tile span { font-size: 12px; line-height: 16px; display: block; }
+        .view-example-link {
+            display: none;
+            margin-top: 8px;
+            font-size: 0.7rem;
+            color: #8B5CF6;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .format-tile.selected .view-example-link {
+            display: block;
+        }
+
+        .accordion-header { cursor: pointer; }
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 200ms ease-out; }
+        .accordion-content.open { max-height: 500px; } /* Increased max-height for content */
+        .accordion-header i { transition: transform 200ms ease; }
+        .accordion-header.open i { transform: rotate(180deg); }
+
+        .preview-overlay-bg {
+            background-color: rgba(26, 28, 36, 0.96);
+            z-index: 60;
+        }
+        .preview-panel {
+            border: 1px solid #2F2F3A;
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 16px;
+        }
+        .preview-panel img { max-width: 100%; border-radius: 4px; margin-bottom: 8px; }
+        .preview-panel-caption { font-size: 14px; line-height: 20px; font-weight: 500; }
+        .btn-ghost {
+            background-color: transparent;
+            border: 1px solid #8B5CF6;
+            color: #8B5CF6;
+        }
+        .btn-ghost:hover {
+            background-color: rgba(139, 92, 246, 0.10);
+        }
+
+        .loading-dots::after {
+            content: 'Loading...'; /* Simple loading text */
+            display: inline-block;
+            /* animation: loading-dots 1.4s infinite; Consider adding actual dot animation if needed */
+        }
+        /* Basic spinner for loading states */
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s ease-infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .main-view { display: none; }
+        .main-view.active { display: block; }
+
+        .discover-card {
+            background-color: #1F2937; /* gray-800 */
+            border-radius: 0.75rem; /* rounded-xl */
+            overflow: hidden;
+            margin-bottom: 1.5rem; /* space-y-6 equivalent */
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+        }
+        .discover-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem; /* p-3 md:p-4 */
+        }
+        .discover-card-image-container {
+            position: relative;
+            width: 100%;
+        }
+         .discover-card-image-container img {
+            display: block;
+            width: 100%;
+            height: auto; /* maintain aspect ratio */
+            max-height: 70vh; /* prevent overly tall images */
+            object-fit: cover;
+        }
+        .discover-card-actions {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            color: #9CA3AF; /* text-gray-400 */
+        }
+        .discover-card-actions .action-icon {
+            margin-right: 1rem; /* space-x-4 */
+            cursor: pointer;
+        }
+         .discover-card-actions .action-icon:hover {
+            color: #E0E0E0; /* text-gray-200 */
+        }
+        .discover-card-actions .action-icon i {
+            font-size: 1.25rem; /* text-xl */
+        }
+         .discover-card-actions .action-icon span {
+            font-size: 0.875rem; /* text-sm */
+            margin-left: 0.25rem; /* ml-1 */
+        }
+        .discover-card-description {
+            padding: 0 1rem 0.75rem;
+            font-size: 0.875rem; /* text-sm */
+            line-height: 1.25rem; /* leading-relaxed */
+            color: #D1D5DB; /* text-gray-300 */
+        }
+        .discover-card-timestamp {
+            padding: 0 1rem 1rem;
+            font-size: 0.75rem; /* text-xs */
+            color: #6B7280; /* text-gray-500 */
+        }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield; /* Firefox */
+        }
+        input[readonly] {
+            background-color: #374151; /* Tailwind gray-700 */
+            cursor: not-allowed;
+        }
+        .slide-chip {
+            border: 1px solid #2F2F3A;
+            background-color: transparent;
+            color: #9CA3AF; /* gray-400 */
+            border-radius: 9999px; /* rounded-full */
+            padding: 0.5rem 0.75rem; /* py-2 px-3 */
+            min-width: 60px; /* Adjust as needed */
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+            font-size: 0.875rem; /* text-sm */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .slide-chip.locked { color: #6B7280; } /* gray-500 */
+        .slide-chip.locked i { margin-right: 0.25rem; }
+        .slide-chip.selected { background-color: #8B5CF6; border-color: #8B5CF6; color: white; }
+        .slide-chip:hover:not(.selected):not(.locked) { background-color: rgba(139,92,246,0.10); border-color: #8B5CF6; }
+        .slide-chip.locked:hover:not(.selected) { border-color: #4B5563; } /* gray-600 */
+        .slide-chip:focus-visible { outline: none; border-color: #8B5CF6; box-shadow: 0 0 0 2px #1A1C24, 0 0 0 4px #8B5CF6; }
+
+        /* Drama Reader Specific Styles */
+        .surface-bg { background-color: #1A1C24; } /* Default background for reader */
+        .reader-header { background-color: rgba(26, 28, 36, 0.85); backdrop-filter: blur(5px); }
+        .reader-image-container { background-color: #111827; /* gray-900 */ min-height: 200px; /* Ensure space while loading */ }
+        .reader-image-container img { max-height: 65vh; object-fit: contain; }
+        .reader-narrative { line-height: 1.6; font-size: 0.95rem; max-height: 7.5em; /* Approx 4-5 lines */ overflow: hidden; transition: max-height 0.3s ease-out; }
+        .reader-narrative.expanded { max-height: 500px; /* Allow full expansion */ }
+        .reader-narrative.clamped { /* Styles for when text is clamped */ }
+        .reader-more-link { color: #A78BFA; /* purple-400 */ cursor: pointer; font-weight: 500; }
+        .reader-choice-button {
+            background-color: rgba(75, 85, 99, 0.3); /* gray-600 with opacity */
+            border: 1px solid #4B5563; /* gray-600 */
+            border-radius: 0.5rem; /* rounded-lg */
+            transition: background-color 0.2s, border-color 0.2s;
+            margin-bottom: 0.75rem; /* space-y-3 */
+        }
+        .reader-choice-button:hover:not(:disabled) { background-color: rgba(139, 92, 246, 0.3); border-color: #8B5CF6; }
+        .reader-choice-button.selected { background-color: #8B5CF6; border-color: #8B5CF6; color: white; }
+        .reader-choice-button:disabled { opacity: 0.7; cursor: not-allowed; }
+        .reader-choice-button .spinner { width: 16px; height: 16px; border-width: 2px; }
+
+        .fade-in { animation: fadeInAnimation 0.5s ease-in-out forwards; }
+        .fade-out { animation: fadeOutAnimation 0.3s ease-in-out forwards; }
+        @keyframes fadeInAnimation { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeOutAnimation { from { opacity: 1; } to { opacity: 0; } }
+
+        #readerCurrentPageContent > *:not(.hidden) { animation: fadeInIndividual 0.4s ease-out forwards; opacity:0; }
+        #readerCurrentPageContent > *.visible { opacity:1; }
+        @keyframes fadeInIndividual { 0% { opacity:0; transform: translateY(5px); } 100% { opacity:1; transform: translateY(0); } }
+
+        .reader-footer-button {
+            background-color: rgba(55, 65, 81, 0.5); /* gray-700 with opacity */
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+        .reader-footer-button:hover { background-color: rgba(75, 85, 99, 0.7); }
+    </style>
+</head>
+<body class="bg-slate-900 text-white"> <div class="container mx-auto max-w-md h-screen flex flex-col relative">
+        <header id="mainAppHeader" class="p-4 flex items-center justify-between sticky top-0 bg-slate-900 z-20 border-b border-slate-800">
+            <img src="https://placehold.co/40x40/7C3AED/FFFFFF?text=W&font=Inter" alt="Logo" class="rounded-lg">
+            <div class="flex items-center space-x-3">
+                <div class="nsfw-toggle">
+                    <span class="active-toggle">SFW</span>
+                    <span class="inactive-toggle">NSFW</span>
+                </div>
+                <button class="p-2 rounded-full hover:bg-slate-700">
+                    <i class="fas fa-search text-xl"></i>
+                </button>
+            </div>
+            <div class="flex items-center space-x-3">
+                 <button class="p-2 rounded-full hover:bg-slate-700 relative">
+                    <i class="fas fa-bell text-xl"></i>
+                    <span class="absolute top-0 right-0 block h-4 w-4 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center ring-2 ring-slate-900">11</span>
+                </button>
+                <button class="p-2 rounded-full hover:bg-slate-700">
+                    <i class="fas fa-comment-dots text-xl"></i> </button>
+                <img src="https://placehold.co/32x32/A78BFA/FFFFFF?text=U&font=Inter" alt="User Avatar" class="w-8 h-8 rounded-full">
+            </div>
+        </header>
+
+        <main class="flex-grow overflow-y-auto p-0 sm:p-4 no-scrollbar z-10">
+            <div id="discoverView" class="main-view active space-y-6">
+                <div class="discover-card">
+                    <div class="discover-card-header">
+                        <div class="flex items-center space-x-2">
+                            <img src="https://placehold.co/32x32/8B5CF6/FFFFFF?text=L&font=Inter" alt="Leo avatar" class="w-8 h-8 rounded-full">
+                            <span class="font-semibold text-sm text-white">Leo</span>
+                        </div>
+                        <button class="text-xs bg-slate-700 hover:bg-slate-600 text-white font-semibold py-1.5 px-3 rounded-full">Chat</button>
+                    </div>
+                    <div class="discover-card-image-container">
+                        <img src="https://placehold.co/600x400/3B82F6/FFFFFF?text=Leo+Playing+Soccer&font=Inter" alt="Leo playing soccer" onerror="this.src='https://placehold.co/600x400/cccccc/333333?text=Image+Not+Found'">
+                    </div>
+                    <div class="discover-card-actions">
+                        <div class="action-icon flex items-center"><i class="far fa-heart"></i><span>1</span></div>
+                        <div class="action-icon flex items-center"><i class="far fa-comment"></i><span>0</span></div>
+                        <div class="action-icon ml-auto"><i class="fas fa-ellipsis-h"></i></div>
+                    </div>
+                    <p class="discover-card-description">
+                        Hey everyone, meet Leo! <i class="fas fa-heart text-purple-400"></i> He's a little shy at first, but super loyal & kind once you get to...
+                    </p>
+                    <p class="discover-card-timestamp">14 May 2025 - 08:42 PM</p>
+                </div>
+                <div class="discover-card">
+                    <div class="discover-card-header">
+                        <div class="flex items-center space-x-2">
+                            <img src="https://placehold.co/32x32/EC4899/FFFFFF?text=A&font=Inter" alt="Aalicia avatar" class="w-8 h-8 rounded-full">
+                            <span class="font-semibold text-sm text-white">Aalicia</span>
+                        </div>
+                        <button class="text-xs bg-slate-700 hover:bg-slate-600 text-white font-semibold py-1.5 px-3 rounded-full">Chat</button>
+                    </div>
+                    <div class="discover-card-image-container">
+                        <img src="https://placehold.co/600x450/F472B6/FFFFFF?text=Aalicia+in+a+Cafe&font=Inter" alt="Aalicia in a cafe" onerror="this.src='https://placehold.co/600x450/cccccc/333333?text=Image+Not+Found'">
+                    </div>
+                    <div class="discover-card-actions">
+                        <div class="action-icon flex items-center"><i class="fas fa-heart text-red-500"></i><span>152</span></div>
+                        <div class="action-icon flex items-center"><i class="far fa-comment"></i><span>34</span></div>
+                        <div class="action-icon ml-auto"><i class="fas fa-ellipsis-h"></i></div>
+                    </div>
+                    <p class="discover-card-description">
+                        Just enjoying a quiet afternoon with a good book and a warm cup of tea. What are your favorite ways to unwind? Let me know!
+                    </p>
+                    <p class="discover-card-timestamp">14 May 2025 - 05:15 PM</p>
+                </div>
+                 <div class="discover-card">
+                    <div class="discover-card-header">
+                        <div class="flex items-center space-x-2">
+                            <img src="https://placehold.co/32x32/10B981/FFFFFF?text=R&font=Inter" alt="Rylan avatar" class="w-8 h-8 rounded-full">
+                            <span class="font-semibold text-sm text-white">Rylan</span>
+                        </div>
+                        <button class="text-xs bg-slate-700 hover:bg-slate-600 text-white font-semibold py-1.5 px-3 rounded-full">Chat</button>
+                    </div>
+                    <div class="discover-card-image-container">
+                        <img src="https://placehold.co/600x420/059669/FFFFFF?text=Rylan+Hiking&font=Inter" alt="Rylan hiking" onerror="this.src='https://placehold.co/600x420/cccccc/333333?text=Image+Not+Found'">
+                    </div>
+                    <div class="discover-card-actions">
+                        <div class="action-icon flex items-center"><i class="far fa-heart"></i><span>78</span></div>
+                        <div class="action-icon flex items-center"><i class="far fa-comment"></i><span>12</span></div>
+                        <div class="action-icon ml-auto"><i class="fas fa-ellipsis-h"></i></div>
+                    </div>
+                    <p class="discover-card-description">
+                        Reached the summit! The view from up here is absolutely breathtaking. Nature's therapy is the best. <i class="fas fa-mountain text-green-400"></i>
+                    </p>
+                    <p class="discover-card-timestamp">13 May 2025 - 11:30 AM</p>
+                </div>
+            </div>
+            <div id="featuredView" class="main-view p-4 space-y-6">
+                <section>
+                    <h2 class="text-sm font-semibold uppercase text-slate-400 mb-3">FEATURED</h2>
+                    <div class="flex space-x-4 overflow-x-auto pb-4 no-scrollbar">
+                        <script>
+                            for(let i=0; i<10; i++) {
+                                document.write(`
+                                <div class="bg-slate-800 rounded-full px-4 py-2 flex items-center space-x-3 flex-shrink-0 h-16 min-w-[240px] hover:bg-slate-700 cursor-pointer">
+                                    <img src="https://placehold.co/40x40/4A5568/FFFFFF?text=F${i+1}&font=Inter" alt="Featured ${i+1}" class="w-10 h-10 rounded-full object-cover flex-shrink-0" onerror="this.src='https://placehold.co/40x40/cccccc/333333?text=F${i+1}'">
+                                    <div class="flex-1 overflow-hidden mr-2">
+                                        <h3 class="font-semibold text-sm truncate whitespace-nowrap">Featured Item ${i+1}</h3>
+                                        <p class="text-xs text-slate-400 truncate whitespace-nowrap">Short description for item ${i+1}...</p>
+                                    </div>
+                                    <button class="text-slate-400 hover:text-purple-400 flex-shrink-0 p-1 rounded-full hover:bg-slate-700">
+                                        <i class="fas fa-comment-alt text-lg"></i>
+                                    </button>
+                                </div>
+                                `);
+                            }
+                        </script>
+                    </div>
+                </section>
+                <section>
+                    <h2 class="text-sm font-semibold uppercase text-slate-400 mb-3">EXPLORE</h2>
+                    <div class="flex space-x-2 mb-4 overflow-x-auto pb-2 no-scrollbar">
+                        <button class="px-4 py-2 text-sm bg-yellow-500 text-slate-900 font-semibold rounded-full hover:bg-yellow-400 whitespace-nowrap">Recommended</button>
+                        <button class="px-4 py-2 text-sm bg-slate-700 text-slate-300 font-semibold rounded-full hover:bg-slate-600 whitespace-nowrap">Adventure</button>
+                        <button class="px-4 py-2 text-sm bg-slate-700 text-slate-300 font-semibold rounded-full hover:bg-slate-600 whitespace-nowrap">Anime</button>
+                        <button class="px-4 py-2 text-sm bg-slate-700 text-slate-300 font-semibold rounded-full hover:bg-slate-600 whitespace-nowrap">Book</button>
+                        <button class="px-4 py-2 text-sm bg-slate-700 text-slate-300 font-semibold rounded-full hover:bg-slate-600 whitespace-nowrap">Sci-Fi</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <script>
+                            const exploreItems = [
+                                { name: "Tyson", desc: "Tyson is an honest, funny, annoying, tall,...", rank: "#25789", chats: "30", tag: "Unfiltered", tagColor: "red" },
+                                { name: "Vishnu", desc: "Vishnu, the male Indian god, embodies...", rank: "#19746", chats: "41", tag: "Unfiltered", tagColor: "red" },
+                                { name: "Kaelen", desc: "A stoic warrior from a forgotten land, seeking ancient relics.", rank: "#10123", chats: "15", tag: "Fantasy", tagColor: "blue" },
+                                { name: "Lyra 'Glitch' Nova", desc: "Cyberpunk hacker navigating neon-drenched cityscapes.", rank: "#10567", chats: "22", tag: "Sci-Fi", tagColor: "pink" },
+                                { name: "Professor Armitage", desc: "Eccentric inventor with a workshop full of wonders and dangers.", rank: "#11001", chats: "18", tag: "Steampunk", tagColor: "yellow" },
+                                { name: "Seraphina Moonwhisper", desc: "Elven diplomat navigating treacherous political landscapes.", rank: "#11234", chats: "25", tag: "High Fantasy", tagColor: "green" },
+                                { name: "Captain 'Storm' Rider", desc: "Dashing space pirate with a hidden code of honor.", rank: "#11567", chats: "30", tag: "Space Opera", tagColor: "indigo" },
+                                { name: "Detective Miles Corbin", desc: "Hardboiled detective in a rain-soaked noir city.", rank: "#11890", chats: "12", tag: "Noir", tagColor: "gray" },
+                                { name: "Anya Sharma", desc: "Young journalist uncovering a city-wide conspiracy.", rank: "#12023", chats: "28", tag: "Modern Mystery", tagColor: "teal" },
+                                { name: "Elder Thornroot", desc: "Ancient treant guarding the last mystical forest.", rank: "#12345", chats: "19", tag: "Nature Fantasy", tagColor: "lime" },
+                                { name: "Zara 'Zephyr' Khan", desc: "Parkour expert and urban explorer in a futuristic metropolis.", rank: "#12678", chats: "21", tag: "Urban Fantasy", tagColor: "cyan" },
+                                { name: "Brother Alaric", desc: "Monk from a secluded monastery with forbidden knowledge.", rank: "#12901", chats: "26", tag: "Dark Fantasy", tagColor: "orange" }
+                            ];
+                            exploreItems.forEach(item => {
+                                document.write(`
+                                <div class="bg-slate-800 rounded-xl overflow-hidden hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+                                    <img src="https://placehold.co/200x250/334155/FFFFFF?text=${encodeURIComponent(item.name.substring(0,10))}&font=Inter" alt="${item.name}" class="w-full h-40 object-cover" onerror="this.src='https://placehold.co/200x250/cccccc/333333?text=Image+Error'">
+                                    <div class="p-3">
+                                        <h3 class="font-semibold">${item.name}</h3>
+                                        <p class="text-xs text-slate-400 mb-2 h-8 overflow-hidden">${item.desc}</p> <span class="text-xs bg-${item.tagColor}-500/30 text-${item.tagColor}-400 px-2 py-0.5 rounded-full font-medium">${item.tag}</span>
+                                        <div class="flex justify-between items-center mt-2 text-xs text-slate-500">
+                                            <span>${item.rank} Rank</span>
+                                            <span>${item.chats} Chats</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                `);
+                            });
+                        </script>
+                    </div>
+                </section>
+            </div>
+            <div id="createView" class="main-view p-4"><h2 class="text-2xl font-bold text-white">Create</h2><p class="text-slate-400">Handled by modal.</p></div>
+            <div id="profileView" class="main-view p-4"><h2 class="text-2xl font-bold text-white">My Profile</h2><p class="text-slate-400">Profile info.</p></div>
+            <div id="chatsView" class="main-view p-4"><h2 class="text-2xl font-bold text-white">Chats</h2><p class="text-slate-400">Conversations.</p></div>
+
+            <div id="dramaReaderView" class="main-view surface-bg flex flex-col h-full">
+                <div id="readerHeader" class="reader-header p-3 flex items-center justify-between sticky top-0 z-10 border-b border-slate-700/50">
+                    <div class="flex items-center space-x-2">
+                        <img id="readerCharacterAvatar" src="https://placehold.co/32x32/A78BFA/FFFFFF?text=N&font=Inter" alt="Character Avatar" class="w-8 h-8 rounded-full">
+                        <div>
+                            <h1 id="readerDramaTitle" class="text-sm font-semibold text-white truncate max-w-[150px] sm:max-w-xs">Drama Title</h1>
+                            <p id="readerCharacterName" class="text-xs text-slate-400">Character Name</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <span id="readerPageIndicator" class="text-xs text-slate-400" aria-live="polite">1 / 1</span>
+                        <button id="readerCloseBtn" class="text-slate-400 hover:text-white" aria-label="Close reader">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="w-full h-1 bg-slate-700 md:hidden sticky top-[calc(theme(spacing.12)+1px)] z-10"> {/* Adjust top if header height changes */}
+                    <div id="readerMobileProgressBarFill" class="h-full bg-purple-600 transition-all duration-500 ease-linear"></div>
+                </div>
+
+                <div id="readerMainContentArea" class="flex-grow overflow-y-auto no-scrollbar p-4 space-y-4">
+                    <div id="readerCurrentPageContent">
+                        <div class="reader-image-container relative w-full rounded-lg overflow-hidden flex items-center justify-center mb-4">
+                            <div id="readerImageLoadingState" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 hidden">
+                                <div class="spinner"></div>
+                                <p class="mt-2 text-sm">Loading Scene...</p>
+                            </div>
+                            <img id="readerSceneImage" src="" alt="Scene Image" class="w-full h-auto transition-opacity duration-300 opacity-0" onerror="this.style.opacity='0'; document.getElementById('readerImageErrorState').classList.remove('hidden'); document.getElementById('readerImageLoadingState').classList.add('hidden');">
+                            <div id="readerImageErrorState" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-800 text-slate-400 hidden p-4">
+                                <i class="fas fa-exclamation-triangle text-3xl text-red-500 mb-2"></i>
+                                <p class="text-sm text-center mb-2">Could not load image.</p>
+                                <button id="readerRetryImageBtn" class="py-1 px-3 text-xs bg-purple-600 text-white rounded hover:bg-purple-500">Retry</button>
+                            </div>
+                        </div>
+
+                        <h2 id="readerSceneHeadline" class="text-xl font-semibold text-white mb-2 opacity-0">Scene Headline</h2>
+                        <p id="readerNarrativeParagraph" class="reader-narrative text-slate-300 mb-1 opacity-0">Narrative text will appear here...</p>
+                        <a id="readerMoreLink" class="reader-more-link text-sm hidden">Read More</a>
+                    </div>
+                </div>
+
+                <div id="readerChoicesAndFooter" class="p-4 border-t border-slate-700/50 bg-slate-800/50 backdrop-blur-sm">
+                    <div id="readerChoiceButtonsContainer" class="space-y-3 mb-3 max-h-[30vh] overflow-y-auto no-scrollbar">
+                        </div>
+                    <div id="noInternetBanner" class="hidden bg-red-500/20 border border-red-500 text-red-300 text-xs p-2 rounded-md text-center mb-3">
+                        <i class="fas fa-wifi-slash mr-1"></i> No internet connection. Some features may be unavailable.
+                    </div>
+                    <div class="flex items-center justify-between text-slate-400">
+                        <button id="readerRestartEpisodeBtn" class="reader-footer-button hover:text-purple-300" aria-label="Restart Episode">
+                            <i class="fas fa-redo mr-1"></i> Restart
+                        </button>
+                        <button id="readerReportContentBtn" class="reader-footer-button hover:text-red-400" aria-label="Report Content">
+                            <i class="fas fa-flag mr-1"></i> Report
+                        </button>
+                    </div>
+                </div>
+            </div> </main>
+
+        <nav class="p-3 flex items-center justify-around bg-slate-800 border-t border-slate-700 sticky bottom-0 z-20">
+            <button data-view="discoverView" class="bottom-nav-icon active"><i class="fas fa-shapes"></i> <span class="nav-text hidden sm:block">Discover</span></button>
+            <button data-view="featuredView" class="bottom-nav-icon text-slate-400 hover:text-purple-400"><i class="fas fa-star"></i> <span class="nav-text hidden sm:block">Featured</span></button>
+            <button id="createPostBtnBottomNav" data-view="createView" class="bottom-nav-icon text-slate-400 hover:text-purple-400"><i class="fas fa-plus-circle text-3xl"></i></button>
+            <button data-view="profileView" class="bottom-nav-icon text-slate-400 hover:text-purple-400"><i class="far fa-smile"></i> <span class="nav-text hidden sm:block">Profile</span></button>
+            <button data-view="chatsView" class="bottom-nav-icon text-slate-400 hover:text-purple-400"><i class="fas fa-comment-dots"></i> <span class="nav-text hidden sm:block">Chats</span></button>
+        </nav>
+
+        <div id="createPostModal" class="fixed inset-0 z-50 items-end justify-center p-0 hidden modal-overlay-bg sm:p-4 sm:items-center">
+            <div class="create-post-modal-content rounded-t-xl sm:rounded-xl shadow-xl w-full max-w-md lg:max-w-[600px] flex flex-col overflow-hidden">
+                <div class="flex items-center justify-between p-4 sm:p-6 border-b border-[#2F2F3A]">
+                    <h3 class="text-xl font-semibold text-white">Create Post</h3>
+                    <button id="closeModalBtn" class="text-slate-400 hover:text-white w-11 h-11 flex items-center justify-center rounded-full hover:bg-slate-700"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div id="seriesContinuationBanner" class="p-3 bg-slate-700 text-center text-sm italic text-slate-300 hidden border-b border-[#2F2F3A]">Continuing <span id="seriesTitle" class="font-semibold"></span> – Episode #<span id="episodeNumber"></span></div>
+                <div class="flex-grow p-4 sm:p-6 space-y-6 overflow-y-auto no-scrollbar">
+                    <div class="space-y-1">
+                        <label class="text-xs font-medium text-slate-400 uppercase">Post As</label>
+                        <div class="mt-1 flex items-center justify-between bg-slate-700/50 p-3 rounded-lg">
+                            <div class="flex items-center space-x-3"><img src="https://placehold.co/40x40/64748B/FFFFFF?text=S&font=Inter" alt="User" class="w-10 h-10 rounded-full" onerror="this.src='https://placehold.co/40x40/cccccc/333333?text=S'"><div><p class="text-sm font-semibold text-white">wsup.ai support</p><p class="text-xs text-slate-400">31 Chats</p></div></div>
+                            <button class="text-yellow-400 text-xs font-semibold hover:text-yellow-300">+ New Character</button>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <label id="postDescriptionLabel" class="text-xs font-medium text-slate-400 uppercase">Format</label>
+                        <div id="formatSelectorContainer" class="space-y-2 mt-1">
+                            <div class="flex gap-2">
+                                <button class="format-tile" data-format="comic" aria-label="Select Comic format"><i class="fas fa-book-open"></i> <span>Comic</span><a class="view-example-link" data-format-example="comic">View Example</a></button>
+                                <button class="format-tile" data-format="drama" aria-label="Select Interactive Drama format"><i class="fas fa-theater-masks"></i> <span>Interactive Drama</span><a class="view-example-link" data-format-example="drama">View Example</a></button>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="format-tile" data-format="image" aria-label="Select Image format"><i class="fas fa-image text-[#8B5CF6]"></i> <span>Image</span><a class="view-example-link" data-format-example="image">View Example</a></button>
+                                <button class="format-tile" data-format="video" aria-label="Select Video format"><i class="fas fa-video"></i> <span>Video</span><a class="view-example-link" data-format-example="video">View Example</a></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex items-center justify-between">
+                             <label for="postDescription" id="promptLabel" class="text-xs font-medium text-slate-400 uppercase">Post Description*</label>
+                            <button class="text-yellow-400 text-xs font-semibold hover:text-yellow-300">Rephrase with AI</button>
+                        </div>
+                        <textarea id="postDescription" name="postDescription" rows="5" class="mt-1 w-full p-3 bg-slate-700/50 rounded-lg text-sm text-white placeholder-slate-500 focus:ring-1 focus:ring-[#8B5CF6] focus:border-[#8B5CF6] border border-transparent" placeholder="Describe your content..."></textarea>
+                        <p id="charCounter" class="text-xs text-slate-500 text-right">0/300</p>
+                        <p id="unsafeContentError" class="text-xs text-red-400 hidden">Warning: Potentially unsafe content detected.</p>
+                    </div>
+                    <div id="advancedOptionsContainer" class="border-t border-[#2F2F3A] pt-6 mt-6">
+                        <div id="advancedOptionsHeader" class="accordion-header flex justify-between items-center py-2">
+                            <h4 class="text-sm font-medium text-white">Advanced Options</h4><i class="fas fa-chevron-down text-slate-400"></i>
+                        </div>
+                        <div id="advancedOptionsContent" class="accordion-content space-y-4 pt-2">
+                            <div id="stylePresetOption" class="hidden"><label for="stylePreset" class="text-xs font-medium text-slate-400 block mb-1">Style Preset</label><select id="stylePreset" class="w-full p-2 bg-slate-700/50 rounded-md text-sm text-white focus:ring-1 focus:ring-[#8B5CF6] border border-transparent focus:border-[#8B5CF6]"><option>Manga</option> <option>Watercolor</option> <option>Noir</option> <option selected>Default</option></select></div>
+                            <div id="panelCountOption" class="hidden"><label for="panelCount" class="text-xs font-medium text-slate-400 block mb-1">Panel Count: <span id="panelCountValue" class="font-bold text-[#8B5CF6]">4</span></label><input type="range" id="panelCount" min="3" max="10" value="4" class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-[#8B5CF6]"></div>
+                            <div id="choiceCountOption" class="hidden"><label for="choiceCount" class="text-xs font-medium text-slate-400 block mb-1">Choice Count: <span id="choiceCountValue" class="font-bold text-[#8B5CF6]">3</span></label><input type="range" id="choiceCount" min="2" max="4" value="3" class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-[#8B5CF6]"></div>
+                            <div id="nsfwFilterOption" class="hidden"><label class="text-xs font-medium text-slate-400 block mb-1">NSFW Filter</label><div class="flex items-center mt-1"><input type="checkbox" id="nsfwToggleAdvanced" class="form-checkbox h-5 w-5 text-[#8B5CF6] bg-slate-600 border-slate-500 rounded focus:ring-[#8B5CF6]" checked><label for="nsfwToggleAdvanced" class="ml-2 text-sm text-white">Enabled</label></div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-4 sm:px-6 py-4 bg-[#1A1C24] border-t border-[#2F2F3A] flex space-x-3 sticky bottom-0">
+                    <button id="cancelPostBtn" class="flex-1 py-3 px-4 text-sm font-semibold text-[#A1A1AA] rounded-lg hover:bg-slate-700/50 bg-slate-700/20">Cancel</button>
+                    <button id="mainCtaBtn" data-action="generate-preview" class="flex-1 py-3 px-4 bg-[#8B5CF6] text-sm font-semibold text-white rounded-lg hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed">Generate Preview</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="detailedDramaModal" class="fixed inset-0 z-[55] items-end justify-center p-0 hidden modal-overlay-bg sm:p-4 sm:items-center">
+            <div class="detailed-drama-modal-content rounded-t-xl sm:rounded-xl shadow-xl w-full max-w-md lg:max-w-[600px] flex flex-col overflow-hidden">
+                <div class="flex items-center justify-between p-4 sm:p-6 border-b border-[#2F2F3A]">
+                    <h3 class="text-xl font-semibold text-white">Interactive Drama Details</h3>
+                    <button id="closeDetailedDramaModalBtn" class="text-slate-400 hover:text-white w-11 h-11 flex items-center justify-center rounded-full hover:bg-slate-700"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div class="flex-grow p-4 sm:p-6 space-y-6 overflow-y-auto no-scrollbar">
+                    <div class="space-y-1">
+                        <label for="dramaTitle" class="text-xs font-medium text-slate-400 uppercase">Drama Title*</label>
+                        <input type="text" id="dramaTitle" maxlength="60" placeholder="E.g. Mysteries of Nightfall" class="mt-1 w-full p-3 bg-slate-700/50 rounded-lg text-sm text-white placeholder-slate-500 border border-[#2F2F3A] focus:border-[#8B5CF6] focus:ring-1 focus:ring-[#8B5CF6]">
+                        <p id="dramaTitleError" class="text-xs text-red-400 mt-1 hidden">Enter a title (3-60 chars).</p>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center">
+                             <label class="text-xs font-medium text-slate-400 uppercase">Description</label>
+                             <button id="editDramaDescriptionBtn" class="text-xs text-[#8B5CF6] hover:underline font-semibold">Edit</button>
+                        </div>
+                        <p id="dramaDescriptionPreview" class="mt-1 p-3 bg-[#32343E] rounded-lg text-sm text-slate-300 min-h-[60px]"></p>
+                        <div id="dramaDescriptionEditContainer" class="hidden mt-1">
+                            <textarea id="dramaDescriptionEdit" rows="3" class="w-full p-3 bg-slate-700/50 rounded-lg text-sm text-white placeholder-slate-500 focus:ring-1 focus:ring-[#8B5CF6] border border-transparent focus:border-[#8B5CF6]"></textarea>
+                            <div class="mt-2 flex justify-end space-x-2">
+                                <button id="cancelEditDescriptionBtn" class="text-xs text-slate-400 hover:text-white py-1 px-2 rounded">Cancel</button>
+                                <button id="saveEditDescriptionBtn" class="text-xs bg-[#8B5CF6] text-white py-1 px-3 rounded hover:bg-purple-500">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-1" role="radiogroup" aria-labelledby="seriesLabel">
+                        <label id="seriesLabel" class="text-xs font-medium text-slate-400 uppercase">Series</label>
+                        <div class="mt-1 space-y-2">
+                            <div><input type="radio" id="newDramaSeries" name="dramaSeriesType" value="new" class="form-radio text-[#8B5CF6] focus:ring-[#8B5CF6]" checked><label for="newDramaSeries" class="ml-2 text-sm">New Drama</label></div>
+                            <div><input type="radio" id="existingDramaSeries" name="dramaSeriesType" value="existing" class="form-radio text-[#8B5CF6] focus:ring-[#8B5CF6]"><label for="existingDramaSeries" class="ml-2 text-sm">Part of Existing</label></div>
+                        </div>
+                        <div id="existingSeriesDropdownContainer" class="mt-2 pl-6 hidden">
+                            <select id="existingSeriesDropdown" class="w-full p-2 bg-slate-700/50 rounded-md text-sm text-white focus:ring-1 focus:ring-[#8B5CF6] border border-[#2F2F3A]">
+                                <option value="series1_3">My First Awesome Drama (3 Episodes)</option>
+                                <option value="series2_1">The Night Owl Chronicles (1 Episode)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="episodeNumberContainer" class="hidden pl-6 space-y-1">
+                        <label for="episodeNumberInput" class="text-xs font-medium text-slate-400 uppercase">Episode Number</label>
+                        <input type="number" id="episodeNumberInput" min="1" value="1" readonly class="mt-1 w-full p-3 bg-slate-700/50 rounded-lg text-sm text-white placeholder-slate-500 border border-[#2F2F3A]">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-medium text-slate-400 uppercase">Slides Per Episode*</label>
+                        <div id="slideChipContainer" class="mt-1 grid grid-cols-3 sm:grid-cols-3 gap-2">
+                            <button class="slide-chip" data-slides="2" aria-label="2 slides">2</button>
+                            <button class="slide-chip selected" data-slides="3" aria-label="3 slides">3</button>
+                            <button class="slide-chip" data-slides="4" aria-label="4 slides">4</button>
+                            <button class="slide-chip locked" data-slides="5" aria-label="5 slides, cost 100 credits, locked" title="Spend 100 credits to unlock 5 slides"><i class="fas fa-lock text-xs"></i>5 <span class="ml-1 text-xs">(100)</span></button>
+                            <button class="slide-chip locked" data-slides="10" aria-label="10 slides, cost 100 credits, locked" title="Spend 100 credits to unlock 10 slides"><i class="fas fa-lock text-xs"></i>10 <span class="ml-1 text-xs">(100)</span></button>
+                            <button class="slide-chip locked" data-slides="15" aria-label="15 slides, cost 100 credits, locked" title="Spend 100 credits to unlock 15 slides"><i class="fas fa-lock text-xs"></i>15 <span class="ml-1 text-xs">(100)</span></button>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">Credit Balance: <span id="creditBalance" class="font-semibold">500</span></p>
+                        <p id="slidesPerEpisodeError" class="text-xs text-red-400 mt-1 hidden">Please choose number of slides.</p>
+                        <div class="mt-2 flex items-center text-sm text-slate-400 italic">
+                            <i class="fas fa-info-circle mr-2 text-base text-purple-400"></i>
+                            Each page can take up to 10s to generate.
+                        </div>
+                    </div>
+                </div>
+                <div class="px-4 sm:px-6 py-4 bg-[#1A1C24] border-t border-[#2F2F3A] flex space-x-3 sticky bottom-0">
+                    <button id="backToStep1Btn" class="flex-1 py-3 px-4 text-sm font-semibold text-[#A1A1AA] rounded-lg hover:bg-slate-700/50 bg-slate-700/20">← Back</button>
+                    <button id="publishDramaBtn" class="flex-1 py-3 px-4 bg-[#8B5CF6] text-sm font-semibold text-white rounded-lg hover:bg-purple-500 disabled:opacity-50 flex items-center justify-center">Publish</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="exampleViewModal" class="fixed inset-0 z-[70] items-center justify-center p-4 hidden modal-overlay-bg">
+            <div class="example-modal-content rounded-xl shadow-xl w-full max-w-md lg:max-w-lg flex flex-col overflow-hidden">
+                <div class="flex items-center justify-between p-4 border-b border-[#2F2F3A]"><h3 id="exampleModalTitle" class="text-lg font-semibold text-white">Example</h3><button id="closeExampleModalBtn" class="text-slate-400 hover:text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-slate-700"><i class="fas fa-times text-xl"></i></button></div>
+                <div id="exampleModalBody" class="p-6 text-sm text-slate-300 overflow-y-auto no-scrollbar max-h-[70vh]"></div>
+                 <div class="px-6 py-4 bg-[#1A1C24] border-t border-[#2F2F3A] text-right"><button id="okExampleModalBtn" class="py-2 px-4 bg-purple-600 text-sm font-semibold text-white rounded-lg hover:bg-purple-500">OK</button></div>
+            </div>
+        </div>
+
+        <div id="previewOverlay" class="fixed inset-0 z-60 flex-col items-center justify-center p-4 hidden preview-overlay-bg">
+            <div id="loadingIndicator" class="text-white text-center hidden"><div class="loading-dots text-xl mb-4"></div> <p>Generating your creation...</p></div>
+            <div id="previewContentArea" class="w-full max-w-xl bg-[#1A1C24] rounded-lg shadow-xl p-6 space-y-4 overflow-y-auto no-scrollbar hidden flex-col max-h-[90vh]">
+                <h4 class="text-lg font-semibold text-white mb-2 text-center">Preview</h4>
+                <div id="previewPanelsContainer" class="space-y-4 max-h-[calc(90vh-150px)] overflow-y-auto no-scrollbar pr-2 flex-grow"></div> <div class="mt-6 flex space-x-3 pt-4 border-t border-[#2F2F3A]"><button id="cancelPreviewBtn" class="flex-1 py-3 px-4 text-sm font-semibold text-[#A1A1AA] rounded-lg hover:bg-slate-700/50 bg-slate-700/20">Back to Edit</button><button id="acceptAllPreviewBtn" class="flex-1 py-3 px-4 bg-[#8B5CF6] text-sm font-semibold text-white rounded-lg hover:bg-purple-500 disabled:opacity-50">Accept All & Continue</button></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // --- DOM Elements ---
+    const mainAppHeader = document.getElementById('mainAppHeader');
+    const createPostModal = document.getElementById('createPostModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const cancelPostBtn = document.getElementById('cancelPostBtn');
+    const mainCtaBtn = document.getElementById('mainCtaBtn');
+    const promptLabel = document.getElementById('promptLabel');
+    const advancedOptionsContainer = document.getElementById('advancedOptionsContainer');
+
+    const postDescription = document.getElementById('postDescription');
+    const charCounter = document.getElementById('charCounter');
+    const formatSelectorContainer = document.getElementById('formatSelectorContainer');
+    const formatTiles = formatSelectorContainer.querySelectorAll('.format-tile');
+
+    const advancedOptionsHeader = document.getElementById('advancedOptionsHeader');
+    const advancedOptionsContent = document.getElementById('advancedOptionsContent');
+    const accordionIcon = advancedOptionsHeader.querySelector('i');
+    let advancedOptionsFirstTimeExpanded = { comic: true, drama: true }; // Tracks if advanced options for a format have been auto-expanded once
+
+    const stylePresetOption = document.getElementById('stylePresetOption');
+    const panelCountOption = document.getElementById('panelCountOption');
+    const panelCountInput = document.getElementById('panelCount');
+    const panelCountValue = document.getElementById('panelCountValue');
+    const choiceCountOption = document.getElementById('choiceCountOption'); // This was referenced but not used for Drama in original. Kept for potential future use.
+    const choiceCountInput = document.getElementById('choiceCount');
+    const choiceCountValue = document.getElementById('choiceCountValue');
+    const nsfwFilterOption = document.getElementById('nsfwFilterOption');
+    const nsfwToggleAdvanced = document.getElementById('nsfwToggleAdvanced');
+
+    const previewOverlay = document.getElementById('previewOverlay');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const previewContentArea = document.getElementById('previewContentArea');
+    const previewPanelsContainer = document.getElementById('previewPanelsContainer');
+    const cancelPreviewBtn = document.getElementById('cancelPreviewBtn');
+    const acceptAllPreviewBtn = document.getElementById('acceptAllPreviewBtn');
+
+    const seriesContinuationBanner = document.getElementById('seriesContinuationBanner');
+    const seriesTitleElement = document.getElementById('seriesTitle');
+    const episodeNumberElement = document.getElementById('episodeNumber');
+
+    const bottomNavButtons = document.querySelectorAll('nav .bottom-nav-icon');
+    const mainViews = document.querySelectorAll('.main-view');
+    const createPostBtnBottomNav = document.getElementById('createPostBtnBottomNav');
+
+    const exampleViewModal = document.getElementById('exampleViewModal');
+    const exampleModalTitle = document.getElementById('exampleModalTitle');
+    const exampleModalBody = document.getElementById('exampleModalBody');
+    const closeExampleModalBtn = document.getElementById('closeExampleModalBtn');
+    const okExampleModalBtn = document.getElementById('okExampleModalBtn');
+
+    // Detailed Drama Modal Elements
+    const detailedDramaModal = document.getElementById('detailedDramaModal');
+    const closeDetailedDramaModalBtn = document.getElementById('closeDetailedDramaModalBtn');
+    const dramaTitleInput = document.getElementById('dramaTitle');
+    const dramaDescriptionPreview = document.getElementById('dramaDescriptionPreview');
+    const dramaDescriptionEditContainer = document.getElementById('dramaDescriptionEditContainer');
+    const dramaDescriptionEdit = document.getElementById('dramaDescriptionEdit');
+    const editDramaDescriptionBtn = document.getElementById('editDramaDescriptionBtn');
+    const saveEditDescriptionBtn = document.getElementById('saveEditDescriptionBtn');
+    const cancelEditDescriptionBtn = document.getElementById('cancelEditDescriptionBtn');
+    const seriesTypeRadios = document.querySelectorAll('input[name="dramaSeriesType"]');
+    const existingSeriesDropdownContainer = document.getElementById('existingSeriesDropdownContainer');
+    const existingSeriesDropdown = document.getElementById('existingSeriesDropdown');
+    const episodeNumberContainer = document.getElementById('episodeNumberContainer');
+    const episodeNumberInput = document.getElementById('episodeNumberInput');
+    const slideChipContainer = document.getElementById('slideChipContainer');
+    const slideChipButtons = slideChipContainer.querySelectorAll('.slide-chip');
+    const creditBalanceElement = document.getElementById('creditBalance');
+
+    const backToStep1Btn = document.getElementById('backToStep1Btn');
+    const publishDramaBtn = document.getElementById('publishDramaBtn');
+    const dramaTitleError = document.getElementById('dramaTitleError');
+    const slidesPerEpisodeError = document.getElementById('slidesPerEpisodeError');
+    let dramaStep1Description = ""; // Stores description from first step of drama creation
+    let selectedSlidesPerEpisode = "3"; // Default selected slides
+    let hasSufficientCredits = true; // Tracks if user has credits for locked options
+
+    // Drama Reader View Elements (now defined in HTML)
+    const dramaReaderView = document.getElementById('dramaReaderView');
+    const readerHeader = document.getElementById('readerHeader');
+    const readerDramaTitleElement = document.getElementById('readerDramaTitle');
+    const readerCharacterAvatarElement = document.getElementById('readerCharacterAvatar');
+    const readerCharacterNameElement = document.getElementById('readerCharacterName');
+    const readerPageIndicatorElement = document.getElementById('readerPageIndicator');
+    const readerCloseBtn = document.getElementById('readerCloseBtn'); // Added close button for reader
+    const readerMobileProgressBarFill = document.getElementById('readerMobileProgressBarFill');
+    const readerMainContentArea = document.getElementById('readerMainContentArea');
+    const readerCurrentPageContentElement = document.getElementById('readerCurrentPageContent');
+    const readerImageContainer = document.querySelector('.reader-image-container');
+    const readerImageLoadingState = document.getElementById('readerImageLoadingState');
+    const readerSceneImageElement = document.getElementById('readerSceneImage');
+    const readerImageErrorState = document.getElementById('readerImageErrorState');
+    const readerRetryImageBtn = document.getElementById('readerRetryImageBtn');
+    const readerSceneHeadlineElement = document.getElementById('readerSceneHeadline');
+    const readerNarrativeParagraphElement = document.getElementById('readerNarrativeParagraph');
+    const readerMoreLinkElement = document.getElementById('readerMoreLink');
+    const readerChoicesAndFooter = document.getElementById('readerChoicesAndFooter');
+    const readerChoiceButtonsContainer = document.getElementById('readerChoiceButtonsContainer');
+    const readerRestartEpisodeBtn = document.getElementById('readerRestartEpisodeBtn');
+    const readerReportContentBtn = document.getElementById('readerReportContentBtn');
+    const readerNoInternetBanner = document.getElementById('noInternetBanner');
+
+
+    let selectedFormat = 'image'; // Default selected format
+    const MAX_CHARS = 300;
+    let currentCtaAction = 'generate-preview'; // Current action for the main CTA button in create modal
+
+    // Mock Data & State for Reader - This will be populated by the specific story content
+    let readerCurrentSlideIndex = 0;
+    const readerEpisodeData = {
+        title: "", // Will be set by "Decision Point: Summit Standoff"
+        character: { name: "", avatar: "" }, // Will be set
+        slides: [] // Will be populated
+    };
+    let readerUserChoices = []; // Stores user's choices during drama playback
+
+    // --- Global NSFW Toggle ---
+    const nsfwToggleGlobal = document.querySelector('.nsfw-toggle');
+    if (nsfwToggleGlobal) {
+        const sfwButton = nsfwToggleGlobal.children[0];
+        const nsfwButton = nsfwToggleGlobal.children[1];
+        nsfwToggleGlobal.addEventListener('click', () => {
+            sfwButton.classList.toggle('active-toggle');
+            sfwButton.classList.toggle('inactive-toggle');
+            nsfwButton.classList.toggle('active-toggle');
+            nsfwButton.classList.toggle('inactive-toggle');
+            // Sync with advanced options toggle if modal is open
+            if (!createPostModal.classList.contains('hidden') && nsfwFilterOption && !nsfwFilterOption.classList.contains('hidden')) {
+                nsfwToggleAdvanced.checked = nsfwButton.classList.contains('active-toggle');
+            }
+            // Potentially refresh content or apply filter globally here
+            console.log("Global NSFW filter toggled to:", nsfwButton.classList.contains('active-toggle') ? "NSFW" : "SFW");
+        });
+    }
+
+    // --- Bottom Navigation Logic ---
+    bottomNavButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const viewId = button.dataset.view;
+
+            // Always show main app header unless reader is active
+            mainAppHeader.classList.remove('hidden');
+            dramaReaderView.classList.remove('active'); // Explicitly hide reader when other tabs are clicked
+            dramaReaderView.classList.add('hidden');   // Also add hidden class
+
+            if (button.id === 'createPostBtnBottomNav') {
+                openModal();
+                // Highlight the create button, unhighlight others
+                bottomNavButtons.forEach(btn => {
+                    if (btn !== button) {
+                        btn.classList.remove('active', 'text-[#8B5CF6]');
+                        btn.classList.add('text-slate-400');
+                    } else {
+                        btn.classList.add('active', 'text-[#8B5CF6]');
+                        btn.classList.remove('text-slate-400');
+                    }
+                });
+                return; // Don't try to switch main views if opening modal
+            }
+
+            // Switch main views
+            mainViews.forEach(view => view.classList.remove('active'));
+            const targetView = document.getElementById(viewId);
+            if (targetView) {
+                targetView.classList.add('active');
+                targetView.classList.remove('hidden'); // Ensure it's not hidden if it was the reader
+                if (viewId === 'dramaReaderView') { // This case is now handled by publishing a drama
+                    mainAppHeader.classList.add('hidden'); // Hide header for reader
+                }
+            }
+
+            // Update nav button styles
+            bottomNavButtons.forEach(btn => {
+                btn.classList.remove('active', 'text-[#8B5CF6]');
+                btn.classList.add('text-slate-400');
+            });
+            button.classList.add('active', 'text-[#8B5CF6]');
+            button.classList.remove('text-slate-400');
+        });
+    });
+
+    // --- Create Post Modal Functions ---
+    const openModal = (isContinuation = false, seriesData = null) => {
+        createPostModal.classList.remove('hidden'); createPostModal.classList.add('flex');
+        document.body.style.overflow = 'hidden'; // Prevent background scroll
+        postDescription.value = ''; updateCharCounter();
+
+        document.getElementById('unsafeContentError').classList.add('hidden');
+        advancedOptionsFirstTimeExpanded = { comic: true, drama: true }; // Reset first-time expansion tracker
+
+        if (isContinuation && seriesData) {
+            seriesContinuationBanner.classList.remove('hidden');
+            seriesTitleElement.textContent = seriesData.title;
+            episodeNumberElement.textContent = seriesData.nextEpisodeNumber;
+            selectedFormat = seriesData.format || 'image';
+            postDescription.value = seriesData.lastEpisodeSummary || '';
+            postDescription.style.color = 'lightgrey'; // Indicate pre-filled text
+        } else {
+            seriesContinuationBanner.classList.add('hidden');
+            selectedFormat = 'image'; // Default to image for new posts
+            postDescription.style.color = ''; // Reset text color
+        }
+        selectFormatTile(selectedFormat); // Apply selected format UI
+        updateCharCounter();
+        checkPromptLength(); // Enable/disable CTA based on initial prompt length
+    };
+
+    const closeModal = () => {
+        createPostModal.classList.add('hidden'); createPostModal.classList.remove('flex');
+        closeDetailedDramaModal(); // Ensure drama step 2 modal is also closed
+        document.body.style.overflow = ''; // Restore background scroll
+        closePreviewOverlay();
+
+        // If "Create" nav button was active, switch to "Discover"
+        let currentlyActiveButton = document.querySelector('nav .bottom-nav-icon.active');
+        if (currentlyActiveButton && currentlyActiveButton.id === 'createPostBtnBottomNav') {
+            currentlyActiveButton.classList.remove('active', 'text-[#8B5CF6]');
+            currentlyActiveButton.classList.add('text-slate-400');
+            // Simulate click on Discover tab
+            const discoverButton = document.querySelector('nav .bottom-nav-icon[data-view="discoverView"]');
+            if (discoverButton) discoverButton.click();
+        }
+    };
+    if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+    if (cancelPostBtn) cancelPostBtn.addEventListener('click', closeModal);
+    // Close modal if clicking on the overlay background
+    createPostModal.addEventListener('click', (event) => { if (event.target === createPostModal) closeModal(); });
+
+    // Post Description Input Handling
+    postDescription.addEventListener('input', () => {
+        updateCharCounter(); checkPromptLength();
+        // Basic unsafe content check (example)
+        if (postDescription.value.toLowerCase().includes("unsafe_word_example")) {
+            document.getElementById('unsafeContentError').classList.remove('hidden');
+        } else { document.getElementById('unsafeContentError').classList.add('hidden'); }
+    });
+    postDescription.addEventListener('focus', () => { // Clear pre-filled text style on focus
+        if (seriesContinuationBanner.classList.contains('hidden') === false && postDescription.style.color === 'lightgrey') {
+            postDescription.style.color = '';
+        }
+    });
+    function updateCharCounter() {
+        const currentChars = postDescription.value.length;
+        charCounter.textContent = `${currentChars}/${MAX_CHARS}`;
+        charCounter.classList.toggle('text-red-500', currentChars > MAX_CHARS);
+        charCounter.classList.toggle('text-slate-500', currentChars <= MAX_CHARS);
+    }
+    function checkPromptLength() {
+        const currentChars = postDescription.value.length;
+        mainCtaBtn.disabled = currentChars < 5 || currentChars > MAX_CHARS;
+    }
+
+    // --- Example View Modal ---
+    const exampleContents = {
+        image: { title: "Image Post Example", html: "<p>An image post typically consists of a visually appealing image with a caption. Users can react and comment.</p><img src='https://placehold.co/300x200/8B5CF6/FFFFFF?text=Example+Image&font=Inter' alt='Example Image' class='mt-2 rounded-md mx-auto' onerror=\"this.src='https://placehold.co/300x200/cccccc/333333?text=Error'\">" },
+        video: { title: "Video Post Example", html: "<p>A video post showcases a short video clip. It might include a title, description, and controls for playback.</p><div class='mt-2 p-4 bg-slate-700 rounded-md text-center'><i class='fas fa-video text-4xl text-slate-500'></i><p class='mt-2 text-slate-400'>Video Placeholder</p></div>" },
+        comic: { title: "Comic Episode Example", html: "<p>A comic episode is a sequence of panels that tell a story. Each panel can have its own image and narrative text.</p><p class='mt-2'><strong>Panel 1:</strong> Hero faces a mysterious door.</p><p><strong>Panel 2:</strong> Hero cautiously opens the door.</p><p><strong>Panel 3:</strong> A bright light emanates from within!</p>" },
+        drama: { title: "Interactive Drama Scene Example", html: "<p>An interactive drama scene presents a scenario followed by choices for the user, leading to different outcomes.</p><p class='mt-2'><strong>Scene:</strong> You stand at a crossroads. A signpost points left towards 'The Whispering Woods' and right towards 'The Sunken City'.</p><p><strong>Choices:</strong></p><ul class='list-disc list-inside ml-4'><li>Go left to The Whispering Woods.</li><li>Go right to The Sunken City.</li><li>Wait for more information.</li></ul>" }
+    };
+    function showExampleModal(format) {
+        const content = exampleContents[format] || { title: "Example", html: "<p>No example available for this format yet.</p>" };
+        exampleModalTitle.textContent = content.title;
+        exampleModalBody.innerHTML = content.html;
+        exampleViewModal.classList.remove('hidden');
+        exampleViewModal.classList.add('flex');
+    }
+    function closeExampleModal() {
+        exampleViewModal.classList.add('hidden');
+        exampleViewModal.classList.remove('flex');
+    }
+    if(closeExampleModalBtn) closeExampleModalBtn.addEventListener('click', closeExampleModal);
+    if(okExampleModalBtn) okExampleModalBtn.addEventListener('click', closeExampleModal);
+    if(exampleViewModal) exampleViewModal.addEventListener('click', (e) => { if (e.target === exampleViewModal) closeExampleModal(); });
+
+
+    // --- Format Selection Logic ---
+    formatTiles.forEach(tile => {
+        tile.addEventListener('click', () => {
+            const newFormat = tile.dataset.format;
+            if (selectedFormat !== newFormat) {
+                selectedFormat = newFormat;
+            }
+            selectFormatTile(selectedFormat);
+        });
+        tile.addEventListener('keydown', (event) => { // Accessibility: select with Enter/Space
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault(); selectedFormat = tile.dataset.format; selectFormatTile(selectedFormat);
+            }
+        });
+        const exampleLink = tile.querySelector('.view-example-link');
+        if (exampleLink) {
+            exampleLink.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent tile click event
+                const formatForExample = e.target.dataset.formatExample;
+                showExampleModal(formatForExample);
+            });
+        }
+    });
+
+    // Arrow key navigation for format tiles
+    formatSelectorContainer.addEventListener('keydown', (event) => {
+        const currentFocused = document.activeElement;
+        if (!currentFocused.classList.contains('format-tile')) return;
+        const allTilesArray = Array.from(formatTiles);
+        let currentIndex = allTilesArray.indexOf(currentFocused);
+        let nextIndex = currentIndex;
+        const numCols = 2; // Assuming 2 columns
+        const col = currentIndex % numCols; const row = Math.floor(currentIndex / numCols);
+        switch (event.key) {
+            case 'ArrowRight': if (col < numCols - 1) nextIndex = currentIndex + 1; break;
+            case 'ArrowLeft':  if (col > 0) nextIndex = currentIndex - 1; break;
+            case 'ArrowDown':  if (currentIndex + numCols < allTilesArray.length) nextIndex = currentIndex + numCols; break;
+            case 'ArrowUp':    if (currentIndex - numCols >= 0) nextIndex = currentIndex - numCols; break;
+        }
+        if (nextIndex !== currentIndex && nextIndex >= 0 && nextIndex < allTilesArray.length && allTilesArray[nextIndex]) {
+            allTilesArray[nextIndex].focus(); event.preventDefault();
+        }
+    });
+
+    function selectFormatTile(format) {
+        formatTiles.forEach(t => {
+            t.classList.remove('selected'); t.style.animation = 'none'; // Reset animation
+            const icon = t.querySelector('i'); icon.classList.remove('text-[#8B5CF6]');
+            if (!icon.classList.contains('text-slate-400')) icon.classList.add('text-slate-400'); // Default icon color
+            const exampleLink = t.querySelector('.view-example-link');
+            if (exampleLink) exampleLink.style.display = 'none';
+        });
+        const currentTile = formatSelectorContainer.querySelector(`.format-tile[data-format="${format}"]`);
+        if (currentTile) {
+            currentTile.classList.add('selected');
+            currentTile.style.animation = 'pulseAnim 0.8s ease-out'; // Apply pulse animation
+            const icon = currentTile.querySelector('i'); icon.classList.add('text-[#8B5CF6]'); icon.classList.remove('text-slate-400');
+            const exampleLink = currentTile.querySelector('.view-example-link');
+            if (exampleLink) exampleLink.style.display = 'block';
+
+            // Update UI based on format
+            advancedOptionsContainer.classList.toggle('hidden', format === 'drama'); // Hide advanced for drama (handled in step 2)
+            promptLabel.textContent = format === 'drama' ? 'Scene Description*' : 'Post Description*';
+
+            if (format === 'comic') {
+                mainCtaBtn.textContent = 'Next'; currentCtaAction = 'next'; // 'next' will lead to preview
+                postDescription.placeholder = "Describe your comic episode. Ex: Night falls over Neo-Tokyo...";
+            } else if (format === 'drama') {
+                mainCtaBtn.textContent = 'Next'; currentCtaAction = 'next-drama-step2';
+                postDescription.placeholder = "Describe the initial scene. Choices are added in the next step. Ex: The hero stands before two doors...";
+            } else if (format === 'image') {
+                mainCtaBtn.textContent = 'Preview'; currentCtaAction = 'generate-preview';
+                postDescription.placeholder = "Describe your image. Ex: A serene landscape with a setting sun...";
+            } else if (format === 'video') { // Video has no preview step in this mock
+                mainCtaBtn.textContent = 'Publish'; currentCtaAction = 'publish';
+                postDescription.placeholder = "Describe your video content...";
+            }
+            mainCtaBtn.dataset.action = currentCtaAction;
+            updateAdvancedOptionsVisibility(format);
+            checkPromptLength(); // Re-check if CTA should be enabled
+        }
+    }
+    // Add pulse animation keyframes to stylesheet
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = `@keyframes pulseAnim { 0%, 100% { transform: scale(1.03); } 50% { transform: scale(1.06); } }`;
+    document.head.appendChild(styleSheet);
+
+    // --- Advanced Options Accordion ---
+    if (advancedOptionsHeader) {
+        advancedOptionsHeader.addEventListener('click', () => {
+            const isOpen = advancedOptionsContent.classList.toggle('open');
+            advancedOptionsHeader.classList.toggle('open', isOpen);
+            accordionIcon.classList.toggle('fa-chevron-up', isOpen);
+            accordionIcon.classList.toggle('fa-chevron-down', !isOpen);
+            // If accordion is closed manually, mark it as "not first time" for auto-expansion
+            if (!isOpen && advancedOptionsFirstTimeExpanded.hasOwnProperty(selectedFormat)) {
+                 advancedOptionsFirstTimeExpanded[selectedFormat] = false;
+            }
+        });
+    }
+
+    function updateAdvancedOptionsVisibility(format) {
+        stylePresetOption.classList.add('hidden'); panelCountOption.classList.add('hidden');
+        choiceCountOption.classList.add('hidden'); nsfwFilterOption.classList.add('hidden');
+
+        let shouldAutoExpand = false;
+        if (format === 'comic') {
+            if (advancedOptionsFirstTimeExpanded[format]) {
+                shouldAutoExpand = true;
+                advancedOptionsFirstTimeExpanded[format] = false; // Mark as expanded for this session/selection
+            }
+            stylePresetOption.classList.remove('hidden');
+            panelCountOption.classList.remove('hidden');
+            nsfwFilterOption.classList.remove('hidden');
+            // Sync NSFW toggle in advanced options with global toggle
+            if (nsfwToggleGlobal && nsfwToggleAdvanced) {
+                nsfwToggleAdvanced.checked = nsfwToggleGlobal.children[1].classList.contains('active-toggle');
+            }
+        }
+        // Add other format-specific advanced options here if needed, e.g., for 'image' or 'video'
+
+        if (shouldAutoExpand) {
+            if (!advancedOptionsContent.classList.contains('open')) {
+                advancedOptionsContent.classList.add('open');
+                advancedOptionsHeader.classList.add('open');
+                accordionIcon.classList.add('fa-chevron-up');
+                accordionIcon.classList.remove('fa-chevron-down');
+            }
+        } else if (format !== 'comic') { // Auto-collapse if not comic and not manually opened
+             if (advancedOptionsContent.classList.contains('open') && !advancedOptionsHeader.classList.contains('open')) { // Only if not manually kept open
+                advancedOptionsContent.classList.remove('open');
+                // advancedOptionsHeader.classList.remove('open'); // Keep header style if it was manually opened
+                accordionIcon.classList.remove('fa-chevron-up');
+                accordionIcon.classList.add('fa-chevron-down');
+            }
+        }
+    }
+
+    if(panelCountInput) panelCountInput.addEventListener('input', (e) => panelCountValue.textContent = e.target.value);
+    if(choiceCountInput) choiceCountInput.addEventListener('input', (e) => choiceCountValue.textContent = e.target.value); // For future use
+    // Sync advanced NSFW toggle with global on modal open
+    if (nsfwToggleAdvanced && nsfwToggleGlobal) {
+       nsfwToggleAdvanced.checked = nsfwToggleGlobal.querySelector('.nsfw-toggle .active-toggle').textContent === 'NSFW';
+       nsfwToggleAdvanced.addEventListener('change', () => {
+            // If advanced toggle changes, update global toggle
+            const globalSfw = nsfwToggleGlobal.children[0];
+            const globalNsfw = nsfwToggleGlobal.children[1];
+            if (nsfwToggleAdvanced.checked) { // NSFW active
+                globalNsfw.classList.add('active-toggle'); globalNsfw.classList.remove('inactive-toggle');
+                globalSfw.classList.remove('active-toggle'); globalSfw.classList.add('inactive-toggle');
+            } else { // SFW active
+                globalSfw.classList.add('active-toggle'); globalSfw.classList.remove('inactive-toggle');
+                globalNsfw.classList.remove('active-toggle'); globalNsfw.classList.add('inactive-toggle');
+            }
+       });
+    }
+
+
+    // --- Main CTA Button Click Handler (Create Post Modal) ---
+    mainCtaBtn.addEventListener('click', () => {
+        const action = mainCtaBtn.dataset.action;
+        // Basic validation (redundant due to disabled state, but good practice)
+        if (postDescription.value.length < 5 && action !== 'create-final' && action !== 'next-drama-step2' && action !== 'publish') {
+            showToast("Description is too short.", "error");
+            return;
+        }
+        if (postDescription.value.length > MAX_CHARS) {
+            showToast("Description is too long.", "error");
+            return;
+        }
+
+
+        if (action === 'publish') { // For Video format (no preview step)
+            showToast("Video published successfully! (mock)", "success"); closeModal();
+        } else if (action === 'next-drama-step2') { // For Drama format, go to step 2
+            dramaStep1Description = postDescription.value;
+            createPostModal.classList.add('hidden'); // Hide step 1 modal
+            createPostModal.classList.remove('flex');
+            openDetailedDramaModal();
+        } else if (action === 'generate-preview' || action === 'next') { // For Image, Comic (leads to preview)
+            previewOverlay.classList.remove('hidden'); previewOverlay.classList.add('flex');
+            loadingIndicator.classList.remove('hidden'); previewContentArea.classList.add('hidden');
+            document.body.style.overflow = 'hidden'; // Prevent background scroll for preview
+            setTimeout(() => { // Simulate generation time
+                loadingIndicator.classList.add('hidden'); previewContentArea.classList.remove('hidden'); previewContentArea.classList.add('flex');
+                renderPreviewPanels(selectedFormat); acceptAllPreviewBtn.disabled = false;
+            }, 1500);
+        } else if (action === 'create-final') { // After accepting preview
+            showToast("Post created successfully! (mock)", "success"); closeModal();
+        }
+    });
+
+    // --- Detailed Drama Modal (Step 2) Functions ---
+    function openDetailedDramaModal() {
+        detailedDramaModal.classList.remove('hidden');
+        detailedDramaModal.classList.add('flex');
+        document.body.style.overflow = 'hidden'; // Ensure body scroll lock
+
+        dramaDescriptionPreview.textContent = dramaStep1Description;
+        dramaDescriptionEdit.value = dramaStep1Description;
+        dramaDescriptionPreview.classList.remove('hidden');
+        dramaDescriptionEditContainer.classList.add('hidden');
+        // dramaTitleInput.value = ''; // Clear previous title - NO, keep it if user is editing an existing drama concept
+        dramaTitleInput.classList.remove('border-red-400');
+        dramaTitleInput.classList.add('border-[#2F2F3A]');
+        dramaTitleError.classList.add('hidden');
+        document.getElementById('newDramaSeries').checked = true; // Default to new series
+        existingSeriesDropdownContainer.classList.add('hidden');
+        episodeNumberContainer.classList.add('hidden');
+        episodeNumberInput.value = "1";
+
+        // Reset slide chips to default (3 selected) unless a specific story is being loaded
+        // For "Decision Point: Summit Standoff", we'll set it to 5 slides later if title matches.
+        if (dramaTitleInput.value.trim() !== "Decision Point: Summit Standoff") {
+            slideChipButtons.forEach(btn => btn.classList.remove('selected'));
+            const defaultChip = slideChipContainer.querySelector('.slide-chip[data-slides="3"]');
+            if (defaultChip) defaultChip.classList.add('selected');
+            selectedSlidesPerEpisode = "3";
+        }
+
+
+        hasSufficientCredits = true; // Reset credit status
+
+        slidesPerEpisodeError.classList.add('hidden');
+        validatePublishDramaBtn(); // Initial validation for publish button
+    }
+
+    function closeDetailedDramaModal() {
+        detailedDramaModal.classList.add('hidden');
+        detailedDramaModal.classList.remove('flex');
+        // Don't restore body scroll if createPostModal is still intended to be open
+        if (createPostModal.classList.contains('hidden')) {
+            document.body.style.overflow = '';
+        }
+    }
+
+    if(closeDetailedDramaModalBtn) closeDetailedDramaModalBtn.addEventListener('click', () => {
+        closeDetailedDramaModal();
+        // Reopen step 1 modal
+        createPostModal.classList.remove('hidden'); createPostModal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    });
+
+    if(backToStep1Btn) backToStep1Btn.addEventListener('click', () => {
+        closeDetailedDramaModal();
+        // Reopen step 1 modal (which should still be in the DOM, just hidden)
+        createPostModal.classList.remove('hidden'); createPostModal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    });
+
+    // Edit/Save/Cancel Drama Description in Step 2
+    if(editDramaDescriptionBtn) editDramaDescriptionBtn.addEventListener('click', () => {
+        dramaDescriptionPreview.classList.add('hidden');
+        dramaDescriptionEditContainer.classList.remove('hidden');
+        dramaDescriptionEdit.focus();
+    });
+    if(saveEditDescriptionBtn) saveEditDescriptionBtn.addEventListener('click', () => {
+        dramaStep1Description = dramaDescriptionEdit.value; // Update the stored description
+        dramaDescriptionPreview.textContent = dramaStep1Description;
+        dramaDescriptionPreview.classList.remove('hidden');
+        dramaDescriptionEditContainer.classList.add('hidden');
+    });
+    if(cancelEditDescriptionBtn) cancelEditDescriptionBtn.addEventListener('click', () => {
+        dramaDescriptionEdit.value = dramaStep1Description; // Revert to original
+        dramaDescriptionPreview.classList.remove('hidden');
+        dramaDescriptionEditContainer.classList.add('hidden');
+    });
+
+    // Series Type and Episode Number Logic (Drama Step 2)
+    seriesTypeRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            console.log(`idrama_series_select(${e.target.value})`);
+            const isExisting = e.target.value === 'existing';
+            existingSeriesDropdownContainer.classList.toggle('hidden', !isExisting);
+            episodeNumberContainer.classList.toggle('hidden', !isExisting);
+            if (isExisting) {
+                // Update episode number based on selected existing series
+                const selectedSeriesOption = existingSeriesDropdown.options[existingSeriesDropdown.selectedIndex];
+                const lastEpisode = parseInt(selectedSeriesOption.text.match(/\((\d+) Episodes?\)/)?.[1] || 0);
+                episodeNumberInput.value = lastEpisode + 1;
+            } else {
+                episodeNumberInput.value = 1; // Default for new series
+            }
+        });
+    });
+    if(existingSeriesDropdown) {
+        existingSeriesDropdown.addEventListener('change', () => {
+             const selectedSeriesOption = existingSeriesDropdown.options[existingSeriesDropdown.selectedIndex];
+             const lastEpisode = parseInt(selectedSeriesOption.text.match(/\((\d+) Episodes?\)/)?.[1] || 0);
+             episodeNumberInput.value = lastEpisode + 1;
+        });
+    }
+
+    // Slide Chip Selection with Credit Logic (Drama Step 2)
+    slideChipButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            if (button.classList.contains('locked')) {
+                const costText = button.querySelector('span').textContent.match(/\((\d+)\)/);
+                const cost = costText ? parseInt(costText[1]) : 100; // Default cost if not found
+
+                if (confirm(`Spend ${cost} credits to unlock ${button.dataset.slides} slides?`)) {
+                    const currentCredits = parseInt(creditBalanceElement.textContent);
+                    if (currentCredits >= cost) {
+                        creditBalanceElement.textContent = currentCredits - cost;
+                        slideChipButtons.forEach(btn => btn.classList.remove('selected'));
+                        button.classList.add('selected');
+                        selectedSlidesPerEpisode = button.dataset.slides;
+                        console.log(`idrama_chip_select(${selectedSlidesPerEpisode}) - Unlocked`);
+                        slidesPerEpisodeError.classList.add('hidden');
+                        hasSufficientCredits = true;
+                    } else {
+                        showToast("Not enough credits.", "error");
+                        hasSufficientCredits = false;
+                    }
+                } else {
+                    if (button.classList.contains('selected')) { // If they cancel selecting a locked chip that was already selected
+                        hasSufficientCredits = false; // They didn't re-confirm payment
+                    }
+                }
+            } else { // Not a locked chip
+                slideChipButtons.forEach(btn => btn.classList.remove('selected'));
+                button.classList.add('selected');
+                selectedSlidesPerEpisode = button.dataset.slides;
+                console.log(`idrama_chip_select(${selectedSlidesPerEpisode})`);
+                slidesPerEpisodeError.classList.add('hidden');
+                hasSufficientCredits = true;
+            }
+            validatePublishDramaBtn();
+        });
+    });
+
+    function validatePublishDramaBtn() {
+        let titleValid = dramaTitleInput.value.trim().length >= 3 && dramaTitleInput.value.trim().length <= 60;
+        let slidesSelected = !!selectedSlidesPerEpisode;
+
+        const selectedChip = slideChipContainer.querySelector('.slide-chip.selected');
+        let creditsOk = true;
+        if (selectedChip && selectedChip.classList.contains('locked')) {
+            creditsOk = hasSufficientCredits;
+        } else if (selectedChip) {
+            creditsOk = true;
+        } else {
+            slidesSelected = false; // No chip selected
+        }
+        publishDramaBtn.disabled = !(titleValid && slidesSelected && creditsOk);
+    }
+
+    if(dramaTitleInput) dramaTitleInput.addEventListener('input', () => {
+        dramaTitleError.classList.toggle('hidden', dramaTitleInput.value.trim().length >= 3 && dramaTitleInput.value.trim().length <= 60);
+        if (dramaTitleInput.value.trim().length < 3 || dramaTitleInput.value.trim().length > 60) {
+            dramaTitleInput.classList.add('border-red-400');
+            dramaTitleInput.classList.remove('border-[#2F2F3A]');
+        } else {
+            dramaTitleInput.classList.remove('border-red-400');
+            dramaTitleInput.classList.add('border-[#2F2F3A]');
+        }
+        validatePublishDramaBtn();
+    });
+
+    // Publish Drama Button (Drama Step 2)
+    if(publishDramaBtn) publishDramaBtn.addEventListener('click', () => {
+        let titleValid = dramaTitleInput.value.trim().length >= 3 && dramaTitleInput.value.trim().length <= 60;
+        let slidesValid = !!selectedSlidesPerEpisode;
+
+        dramaTitleError.classList.toggle('hidden', titleValid);
+        if (!titleValid) dramaTitleInput.classList.add('border-red-400'); else dramaTitleInput.classList.remove('border-red-400');
+
+        slidesPerEpisodeError.classList.toggle('hidden', slidesValid);
+
+        const selectedChipForPublish = slideChipContainer.querySelector('.slide-chip.selected');
+        let finalCreditCheck = true;
+        if (selectedChipForPublish && selectedChipForPublish.classList.contains('locked')) {
+            finalCreditCheck = hasSufficientCredits;
+        } else if (!selectedChipForPublish) {
+             slidesValid = false;
+             slidesPerEpisodeError.classList.remove('hidden');
+        }
+
+        if (titleValid && slidesValid && finalCreditCheck) {
+            publishDramaBtn.innerHTML = '<div class="spinner mx-auto"></div>';
+            publishDramaBtn.disabled = true;
+
+            // --- Populate readerEpisodeData with "Decision Point: Summit Standoff" ---
+            readerEpisodeData.title = "Decision Point: Summit Standoff";
+            readerEpisodeData.character = { name: "President T", avatar: `https://placehold.co/32x32/6D28D9/FFFFFF?text=PT&font=Inter` };
+            readerEpisodeData.slides = [
+                {
+                    image: `https://placehold.co/720x480/3B82F6/FFFFFF?text=${encodeURIComponent("Oval Office at dawn, American flag, president reading classified folders, warm cinematic lighting")}&font=Inter`,
+                    headline: "Alarming Intel Arrives",
+                    narrative: "Satellites track a covert missile convoy crossing an ally’s border hours before a global summit. Your team awaits the first decision.",
+                    choices: [
+                        { id: "s0c1", text: "Scramble a recon drone", nextSlide: 1 },
+                        { id: "s0c2", text: "Call the ally’s president", nextSlide: 1 },
+                        { id: "s0c3", text: "Stay silent, gather more intel", nextSlide: 1 }
+                    ]
+                },
+                {
+                    image: `https://placehold.co/720x480/3B82F6/FFFFFF?text=${encodeURIComponent("Smart-phone close-up, social feed exploding with “BREAKING” banners, reflections of the flag in glass")}&font=Inter`,
+                    headline: "Leak Hits the Timeline",
+                    narrative: "A staffer’s tweet about “unknown convoys” trends worldwide. Reporters swarm the press room and markets tremble.",
+                    choices: [
+                        { id: "s1c1", text: "Issue an official statement", nextSlide: 2 },
+                        { id: "s1c2", text: "Hold a closed-door briefing", nextSlide: 2 },
+                        { id: "s1c3", text: "Ignore the buzz—for now", nextSlide: 2 }
+                    ]
+                },
+                {
+                    image: `https://placehold.co/720x480/3B82F6/FFFFFF?text=${encodeURIComponent("Dimly lit Situation Room, glowing map with red zones, generals in tense discussion, president seated")}&font=Inter`,
+                    headline: "Time-Critical Options",
+                    narrative: "Confirmed: the convoy carries long-range missiles. Generals urge a precision strike; diplomats plead for restraint.",
+                    choices: [
+                        { id: "s2c1", text: "Authorize limited airstrike", nextSlide: 3 },
+                        { id: "s2c2", text: "Deliver a public ultimatum", nextSlide: 3 },
+                        { id: "s2c3", text: "Invite rivals to emergency talks", nextSlide: 3 }
+                    ]
+                },
+                {
+                    image: `https://placehold.co/720x480/3B82F6/FFFFFF?text=${encodeURIComponent("Grand summit hall, rows of flags, bright spotlight on presidential podium, cameras flashing")}&font=Inter`,
+                    headline: "Eyes of the Planet",
+                    narrative: "At the podium, allies wait on your announcement. The next words could calm—or ignite—the crisis.",
+                    choices: [
+                        { id: "s3c1", text: "Reveal intel and demand action", nextSlide: 4 },
+                        { id: "s3c2", text: "Downplay threat to keep calm", nextSlide: 4 },
+                        { id: "s3c3", text: "Propose a joint border task force", nextSlide: 4 }
+                    ]
+                },
+                {
+                    image: `https://placehold.co/720x480/3B82F6/FFFFFF?text=${encodeURIComponent("White House balcony by night, city lights below, president in silhouette under a full moon")}&font=Inter`,
+                    headline: "History Will Judge",
+                    narrative: "The summit ends in uneasy truce. Alone, you wonder if today’s choices secured peace—or merely delayed conflict.",
+                    choices: [
+                        { id: "s4c1", text: "Schedule follow-up talks", nextSlide: -2 }, // -2 for Finish Episode
+                        { id: "s4c2", text: "Shift focus to domestic issues", nextSlide: -2 },
+                        { id: "s4c3", text: "Order deeper intelligence ops", nextSlide: -2 }
+                    ]
+                }
+            ];
+            // Log the data that will be used by the reader
+            console.log("Publishing specific story: Decision Point: Summit Standoff", readerEpisodeData);
+
+
+            // Simulate API call / processing
+            setTimeout(() => {
+                showToast("Interactive Drama '" + readerEpisodeData.title + "' published!", "success");
+                closeDetailedDramaModal();
+                closeModal();
+                publishDramaBtn.innerHTML = 'Publish';
+
+                mainViews.forEach(view => view.classList.remove('active'));
+                dramaReaderView.classList.remove('hidden');
+                dramaReaderView.classList.add('active');
+                mainAppHeader.classList.add('hidden');
+                document.body.style.overflow = 'hidden';
+
+                readerUserChoices = [];
+                loadReaderSlide(0);
+
+                bottomNavButtons.forEach(btn => {
+                    btn.classList.remove('active', 'text-[#8B5CF6]');
+                    btn.classList.add('text-slate-400');
+                });
+            }, 1500);
+        } else if (!finalCreditCheck) {
+            showToast("Not enough credits to publish with selected slides.", "error");
+            publishDramaBtn.disabled = false; // Re-enable button
+            publishDramaBtn.innerHTML = 'Publish';
+        } else {
+             publishDramaBtn.disabled = false; // Re-enable button
+             publishDramaBtn.innerHTML = 'Publish';
+        }
+    });
+
+
+    // --- Preview Overlay Functions ---
+    function renderPreviewPanels(format) {
+        previewPanelsContainer.innerHTML = '';
+        let panelCountToRender = format === 'comic' ? parseInt(panelCountInput.value) : (format === 'image' ? 1 : 1); // Default to 1 for image/other
+
+        for (let i = 0; i < panelCountToRender; i++) {
+            const panelDiv = document.createElement('div'); panelDiv.className = 'preview-panel bg-slate-700/30';
+            const img = document.createElement('img');
+            img.src = `https://placehold.co/400x200/3B82F6/FFFFFF?text=${format}+Panel+${i+1}&font=Inter`;
+            img.alt = `Preview ${format} Panel ${i+1}`;
+            img.onerror = function() { this.src = `https://placehold.co/400x200/cccccc/333333?text=Error+Loading+Preview`; };
+            const caption = document.createElement('p'); caption.className = 'preview-panel-caption text-slate-300';
+            caption.textContent = `Generated Panel ${i+1} for your ${format}.`;
+            const buttonsDiv = document.createElement('div'); buttonsDiv.className = 'mt-3 flex space-x-2';
+            const regenerateBtn = document.createElement('button');
+            regenerateBtn.className = 'flex-1 py-2 px-3 btn-ghost text-xs rounded-md';
+            regenerateBtn.innerHTML = '<i class="fas fa-sync-alt mr-1"></i> Regenerate';
+            regenerateBtn.onclick = () => {
+                img.src = `https://placehold.co/400x200/4ADE80/FFFFFF?text=Regenerated+${i+1}&font=Inter&random=${Math.random()}`;
+            };
+            const acceptBtn = document.createElement('button');
+            acceptBtn.className = 'flex-1 py-2 px-3 bg-[#8B5CF6] text-white text-xs rounded-md';
+            acceptBtn.innerHTML = '<i class="fas fa-check mr-1"></i> Accept';
+            acceptBtn.onclick = () => {
+                panelDiv.style.borderColor = '#8B5CF6'; panelDiv.style.boxShadow = '0 0 0 2px #8B5CF6';
+                acceptBtn.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Accepted';
+                acceptBtn.disabled = true; regenerateBtn.disabled = true;
+                acceptBtn.classList.add('opacity-70', 'cursor-not-allowed');
+                regenerateBtn.classList.add('opacity-70', 'cursor-not-allowed');
+            };
+            buttonsDiv.appendChild(regenerateBtn); buttonsDiv.appendChild(acceptBtn);
+            panelDiv.appendChild(img); panelDiv.appendChild(caption); panelDiv.appendChild(buttonsDiv);
+            previewPanelsContainer.appendChild(panelDiv);
+        }
+    }
+    function closePreviewOverlay() {
+        previewOverlay.classList.add('hidden'); previewOverlay.classList.remove('flex');
+        if (createPostModal.classList.contains('hidden') && detailedDramaModal.classList.contains('hidden')) {
+            document.body.style.overflow = '';
+        }
+    }
+    if(cancelPreviewBtn) cancelPreviewBtn.addEventListener('click', closePreviewOverlay);
+    if(acceptAllPreviewBtn) {
+        acceptAllPreviewBtn.addEventListener('click', () => {
+            previewPanelsContainer.querySelectorAll('.preview-panel').forEach(panelDiv => {
+                const acceptBtn = panelDiv.querySelector('button:last-child');
+                const regenerateBtn = panelDiv.querySelector('button:first-child');
+                if (acceptBtn && !acceptBtn.disabled) {
+                     panelDiv.style.borderColor = '#8B5CF6'; panelDiv.style.boxShadow = '0 0 0 2px #8B5CF6';
+                    acceptBtn.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Accepted';
+                    acceptBtn.disabled = true; if(regenerateBtn) regenerateBtn.disabled = true;
+                    acceptBtn.classList.add('opacity-70', 'cursor-not-allowed');
+                    if(regenerateBtn) regenerateBtn.classList.add('opacity-70', 'cursor-not-allowed');
+                }
+            });
+            mainCtaBtn.textContent = 'Create Post';
+            mainCtaBtn.dataset.action = 'create-final';
+            closePreviewOverlay();
+        });
+    }
+
+    // --- Toast Notification Utility ---
+    function showToast(message, type = "info") {
+        const toast = document.createElement('div'); toast.textContent = message;
+        toast.className = `fixed bottom-5 right-5 p-3 rounded-md shadow-lg text-white text-sm z-[100] transition-opacity duration-300 ease-out opacity-0`;
+        if (type === "success") toast.style.backgroundColor = "#10B981";
+        else if (type === "error") toast.style.backgroundColor = "#EF4444";
+        else toast.style.backgroundColor = "#3B82F6";
+
+        document.body.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '1'; }, 50);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => { toast.remove(); }, 300);
+        }, 3000);
+    }
+
+    // --- Drama Reader Functions ---
+    function closeDramaReader() {
+        dramaReaderView.classList.remove('active');
+        dramaReaderView.classList.add('hidden');
+        mainAppHeader.classList.remove('hidden');
+        document.body.style.overflow = '';
+
+        const discoverButton = document.querySelector('nav .bottom-nav-icon[data-view="discoverView"]');
+        if (discoverButton) discoverButton.click();
+        showToast("Exited drama.", "info");
+    }
+    if (readerCloseBtn) readerCloseBtn.addEventListener('click', closeDramaReader);
+
+
+    function loadReaderSlide(slideIndex) {
+        if (slideIndex === -2) {
+            showToast("Episode Finished!", "success");
+            closeDramaReader();
+            return;
+        }
+        if (slideIndex < 0 || !readerEpisodeData.slides || slideIndex >= readerEpisodeData.slides.length) {
+            if (slideIndex === -1) readerRestartEpisode();
+            else console.error("Invalid slide index or no slides:", slideIndex, readerEpisodeData.slides);
+            return;
+        }
+        console.log(`idrama_slide_view {episodeId: "${readerEpisodeData.title}", slideIndex: ${slideIndex}}`);
+        readerCurrentSlideIndex = slideIndex;
+        const slide = readerEpisodeData.slides[slideIndex];
+
+        readerCurrentPageContentElement.classList.remove('fade-in');
+        readerCurrentPageContentElement.classList.add('fade-out');
+
+        readerSceneImageElement.classList.add('hidden');
+        readerSceneImageElement.style.opacity = '0';
+        readerImageLoadingState.classList.remove('hidden');
+        readerImageErrorState.classList.add('hidden');
+
+        setTimeout(() => {
+            readerDramaTitleElement.textContent = readerEpisodeData.title;
+            readerCharacterAvatarElement.src = readerEpisodeData.character.avatar;
+            readerCharacterAvatarElement.onerror = function() { this.src = 'https://placehold.co/32x32/cccccc/333333?text=?'; };
+            readerCharacterNameElement.textContent = readerEpisodeData.character.name;
+            readerPageIndicatorElement.textContent = `${slideIndex + 1} / ${readerEpisodeData.slides.length}`;
+            readerPageIndicatorElement.setAttribute('aria-label', `Page ${slideIndex + 1} of ${readerEpisodeData.slides.length}`);
+            const progressPercent = ((slideIndex + 1) / readerEpisodeData.slides.length) * 100;
+            readerMobileProgressBarFill.style.width = `${progressPercent}%`;
+
+            readerSceneImageElement.onload = () => {
+                readerImageLoadingState.classList.add('hidden');
+                readerSceneImageElement.classList.remove('hidden');
+                readerSceneImageElement.style.opacity = '1';
+            };
+            readerSceneImageElement.src = slide.image;
+            if (readerSceneImageElement.complete && readerSceneImageElement.naturalHeight !== 0) {
+                readerSceneImageElement.onload();
+            }
+
+            readerSceneHeadlineElement.textContent = slide.headline;
+            readerNarrativeParagraphElement.textContent = slide.narrative;
+            readerNarrativeParagraphElement.classList.remove('clamped', 'expanded');
+            readerMoreLinkElement.classList.add('hidden');
+            checkReaderNarrativeOverflow();
+
+            readerCurrentPageContentElement.classList.remove('fade-out');
+            readerCurrentPageContentElement.classList.add('fade-in');
+
+            readerChoiceButtonsContainer.innerHTML = '';
+            if (slide.choices && slide.choices.length > 0) {
+                slide.choices.forEach((choice, index) => {
+                    const button = document.createElement('button');
+                    button.className = 'reader-choice-button w-full flex items-center justify-center p-3 text-white text-sm';
+                    button.setAttribute('role', 'button');
+                    button.setAttribute('aria-label', `Choice ${index + 1} of ${slide.choices.length}: ${choice.text}`);
+                    button.dataset.choiceId = choice.id;
+                    button.dataset.nextSlide = choice.nextSlide;
+                    const labelSpan = document.createElement('span');
+                    labelSpan.textContent = choice.text;
+                    button.appendChild(labelSpan);
+                    button.addEventListener('click', handleReaderChoiceSelection);
+                    readerChoiceButtonsContainer.appendChild(button);
+                });
+            } else {
+                const noChoiceMessage = document.createElement('p');
+                noChoiceMessage.className = 'text-slate-400 text-sm text-center italic';
+                noChoiceMessage.textContent = (slideIndex === readerEpisodeData.slides.length - 1) ? "End of episode." : "The story continues...";
+                readerChoiceButtonsContainer.appendChild(noChoiceMessage);
+                 if (slideIndex === readerEpisodeData.slides.length - 1) {
+                    const finishButton = document.createElement('button');
+                    finishButton.className = 'reader-choice-button w-full flex items-center justify-center p-3 text-white text-sm mt-2';
+                    finishButton.textContent = "Finish Episode";
+                    finishButton.onclick = () => loadReaderSlide(-2);
+                    readerChoiceButtonsContainer.appendChild(finishButton);
+                }
+            }
+             setTimeout(() => {
+                readerSceneHeadlineElement.classList.add('visible');
+                readerNarrativeParagraphElement.classList.add('visible');
+            }, 50);
+
+        }, 300);
+    }
+
+    function checkReaderNarrativeOverflow() {
+        if (!readerNarrativeParagraphElement || !readerMoreLinkElement) return;
+        readerNarrativeParagraphElement.classList.remove('clamped');
+        const isOverflowing = readerNarrativeParagraphElement.scrollHeight > readerNarrativeParagraphElement.clientHeight;
+        if (isOverflowing && !readerNarrativeParagraphElement.classList.contains('expanded')) {
+            readerNarrativeParagraphElement.classList.add('clamped');
+            readerMoreLinkElement.classList.remove('hidden');
+        } else {
+            readerMoreLinkElement.classList.add('hidden');
+        }
+    }
+
+    if (readerMoreLinkElement) {
+        readerMoreLinkElement.addEventListener('click', (e) => {
+            e.preventDefault();
+            readerNarrativeParagraphElement.classList.remove('clamped');
+            readerNarrativeParagraphElement.classList.add('expanded');
+            readerMoreLinkElement.classList.add('hidden');
+        });
+    }
+
+    function handleReaderChoiceSelection(event) {
+        const selectedButton = event.currentTarget;
+        if (selectedButton.disabled) return;
+        const choiceId = selectedButton.dataset.choiceId;
+        const nextSlide = parseInt(selectedButton.dataset.nextSlide);
+        console.log(`idrama_choice_select {choiceId: "${choiceId}", slideIndex: ${readerCurrentSlideIndex}, nextSlide: ${nextSlide}}`);
+
+        readerChoiceButtonsContainer.querySelectorAll('.reader-choice-button').forEach(btn => btn.disabled = true);
+        selectedButton.classList.add('selected');
+        const spinner = document.createElement('div'); spinner.className = 'spinner ml-2';
+        selectedButton.appendChild(spinner);
+
+        readerUserChoices.push({slide: readerCurrentSlideIndex, choice: choiceId});
+        setTimeout(() => loadReaderSlide(nextSlide), 800);
+    }
+
+    function readerRestartEpisode() {
+        console.log("idrama_restart");
+        readerUserChoices = []; loadReaderSlide(0); showToast("Episode Restarted", "info");
+    }
+
+    if(readerRestartEpisodeBtn) readerRestartEpisodeBtn.addEventListener('click', () => {
+        if(confirm("Are you sure you want to restart the episode?")) readerRestartEpisode();
+    });
+    if(readerReportContentBtn) readerReportContentBtn.addEventListener('click', () => {
+        console.log("idrama_report"); showToast("Content reported (mock). Thank you!", "info");
+    });
+    if(readerRetryImageBtn) readerRetryImageBtn.addEventListener('click', () => {
+        readerImageErrorState.classList.add('hidden');
+        readerImageLoadingState.classList.remove('hidden');
+        const currentSlide = readerEpisodeData.slides[readerCurrentSlideIndex];
+        if (currentSlide) {
+            readerSceneImageElement.src = '';
+            readerSceneImageElement.src = currentSlide.image;
+        }
+    });
+
+    let readerTouchstartX = 0; let readerTouchendX = 0;
+    function readerCheckDirection() {
+        const choicesAvailable = readerChoiceButtonsContainer.querySelector('.reader-choice-button:not(:disabled)');
+        if (choicesAvailable) return;
+
+        const swipeThreshold = 50;
+        if (readerTouchendX < readerTouchstartX - swipeThreshold) {
+            const nextSlideIndex = readerCurrentSlideIndex + 1;
+            if (nextSlideIndex < readerEpisodeData.slides.length) {
+                loadReaderSlide(nextSlideIndex);
+            } else if (readerEpisodeData.slides[readerCurrentSlideIndex]?.choices[0]?.nextSlide === -1 || readerEpisodeData.slides[readerCurrentSlideIndex]?.choices[0]?.nextSlide === -2) {
+                const lastChoiceButton = readerChoiceButtonsContainer.querySelector('.reader-choice-button');
+                if(lastChoiceButton) handleReaderChoiceSelection({currentTarget: lastChoiceButton});
+            }
+        }
+        if (readerTouchendX > readerTouchstartX + swipeThreshold && readerCurrentSlideIndex > 0) {
+            loadReaderSlide(readerCurrentSlideIndex - 1);
+        }
+    }
+    if(readerMainContentArea) {
+        readerMainContentArea.addEventListener('touchstart', e => { readerTouchstartX = e.changedTouches[0].screenX; }, {passive: true});
+        readerMainContentArea.addEventListener('touchend', e => { readerTouchendX = e.changedTouches[0].screenX; readerCheckDirection(); });
+    }
+    document.addEventListener('keydown', (e) => {
+        if (!dramaReaderView.classList.contains('active')) return;
+
+        const choicesAvailable = readerChoiceButtonsContainer.querySelector('.reader-choice-button:not(:disabled)');
+
+        if (e.key === 'ArrowRight' && !choicesAvailable) {
+            const nextSlideIndex = readerCurrentSlideIndex + 1;
+            if (nextSlideIndex < readerEpisodeData.slides.length) {
+                loadReaderSlide(nextSlideIndex);
+            } else if (readerEpisodeData.slides[readerCurrentSlideIndex]?.choices[0]?.nextSlide === -1 || readerEpisodeData.slides[readerCurrentSlideIndex]?.choices[0]?.nextSlide === -2) {
+                const lastChoiceButton = readerChoiceButtonsContainer.querySelector('.reader-choice-button');
+                if(lastChoiceButton) handleReaderChoiceSelection({currentTarget: lastChoiceButton});
+            }
+        } else if (e.key === 'ArrowLeft' && readerCurrentSlideIndex > 0 && !choicesAvailable) {
+            loadReaderSlide(readerCurrentSlideIndex - 1);
+        } else if (e.key >= '1' && e.key <= '9' && choicesAvailable) {
+            const choiceIndex = parseInt(e.key) - 1;
+            const choiceButtons = readerChoiceButtonsContainer.querySelectorAll('.reader-choice-button:not(:disabled)');
+            if (choiceButtons[choiceIndex]) {
+                handleReaderChoiceSelection({ currentTarget: choiceButtons[choiceIndex] });
+            }
+        } else if (e.key === 'Enter') {
+            const focusedButton = document.activeElement;
+            if (focusedButton && focusedButton.classList.contains('reader-choice-button') && !focusedButton.disabled) {
+                handleReaderChoiceSelection({ currentTarget: focusedButton });
+            }
+        } else if (e.key === 'Escape') {
+            closeDramaReader();
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        if (dramaReaderView.classList.contains('active')) {
+            checkReaderNarrativeOverflow();
+        }
+    });
+    function updateOnlineStatus() {
+        if (readerNoInternetBanner) {
+            readerNoInternetBanner.classList.toggle('hidden', navigator.onLine);
+        }
+    }
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+
+
+    // --- Initial Setup ---
+    checkPromptLength();
+    selectFormatTile(selectedFormat);
+    const discoverButtonDefault = document.querySelector('nav .bottom-nav-icon[data-view="discoverView"]');
+    if (discoverButtonDefault) discoverButtonDefault.click();
+
+    function handleQuotaExceeded() {
+        console.warn("Daily quota exceeded - show upgrade modal (placeholder)");
+        showToast("Daily content generation quota exceeded.", "error");
+    }
+    updateOnlineStatus();
+    </script>
+</body>
+</html>
