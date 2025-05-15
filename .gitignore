@@ -1,0 +1,24 @@
+# macOS / editor noise
+.DS_Store
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+.env
+*.egg-info/
+
+# Node / frontend build output (if any)
+node_modules/
+dist/
+build/
+
+# Large data / model checkpoints
+*.h5
+*.ckpt
+*.pt
+
+# Logs & misc
+*.log
+*.tmp
