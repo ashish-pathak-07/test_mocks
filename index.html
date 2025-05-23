@@ -722,7 +722,7 @@
     // Mock Data & State for Reader - This will be populated by the specific story content
     let readerCurrentSlideIndex = 0;
     const readerEpisodeData = {
-        title: "", // Will be set by "Decision Point: Summit Standoff"
+        title: "", // Will be set by "Operation Sindoor"
         character: { name: "", avatar: "" }, // Will be set
         slides: [] // Will be populated
     };
@@ -1089,7 +1089,7 @@
         dramaDescriptionEdit.value = dramaStep1Description;
         dramaDescriptionPreview.classList.remove('hidden');
         dramaDescriptionEditContainer.classList.add('hidden');
-        // dramaTitleInput.value = ''; // Clear previous title - NO, keep it if user is editing an existing drama concept
+        // dramaTitleInput.value = ''; // Keep title from previous step or user input
         dramaTitleInput.classList.remove('border-red-400');
         dramaTitleInput.classList.add('border-[#2F2F3A]');
         dramaTitleError.classList.add('hidden');
@@ -1098,13 +1098,33 @@
         episodeNumberContainer.classList.add('hidden');
         episodeNumberInput.value = "1";
 
-        // Reset slide chips to default (3 selected) unless a specific story is being loaded
-        // For "Decision Point: Summit Standoff", we'll set it to 5 slides later if title matches.
-        if (dramaTitleInput.value.trim() !== "Decision Point: Summit Standoff") {
-            slideChipButtons.forEach(btn => btn.classList.remove('selected'));
-            const defaultChip = slideChipContainer.querySelector('.slide-chip[data-slides="3"]');
-            if (defaultChip) defaultChip.classList.add('selected');
-            selectedSlidesPerEpisode = "3";
+        // For "Operation Sindoor", we'll set it to 9 slides.
+        // If a different story was intended, this logic would need to be more dynamic.
+        // For this update, we are hardcoding "Operation Sindoor" on publish.
+        // So, the UI selection here is somewhat overridden by the hardcoded story.
+        // We can pre-select 9 if available, or just let the hardcode take over.
+        let nineSlideChip = slideChipContainer.querySelector('.slide-chip[data-slides="9"]');
+        if (!nineSlideChip) { // If a 9-slide chip doesn't exist, create one for display consistency
+            // This is optional, as the actual slide count is determined by the hardcoded story data on publish.
+            // For now, we'll stick to existing chips and let the publish logic use the 9 slides from "Operation Sindoor".
+        }
+        // Default to 3 slides selected in UI if not specifically setting for "Operation Sindoor" here.
+        // The actual number of slides for "Operation Sindoor" (9) will be used on publish.
+        if (dramaTitleInput.value.trim().toLowerCase() !== "operation sindoor") { // Check if user typed it in step 1
+             slideChipButtons.forEach(btn => btn.classList.remove('selected'));
+             const defaultChip = slideChipContainer.querySelector('.slide-chip[data-slides="3"]');
+             if (defaultChip) defaultChip.classList.add('selected');
+             selectedSlidesPerEpisode = "3";
+        } else {
+            // If title is already "Operation Sindoor", pre-select 5 (as 9 is not an option)
+            // or handle this more gracefully by ensuring a "9" chip exists and is selected.
+            // For now, let's assume the user might pick a number, but publish will use 9.
+            const fiveSlideChip = slideChipContainer.querySelector('.slide-chip[data-slides="5"]');
+            if (fiveSlideChip) {
+                slideChipButtons.forEach(btn => btn.classList.remove('selected'));
+                fiveSlideChip.classList.add('selected');
+                selectedSlidesPerEpisode = "5"; // UI shows 5, but publish will use 9 from data
+            }
         }
 
 
@@ -1117,7 +1137,6 @@
     function closeDetailedDramaModal() {
         detailedDramaModal.classList.add('hidden');
         detailedDramaModal.classList.remove('flex');
-        // Don't restore body scroll if createPostModal is still intended to be open
         if (createPostModal.classList.contains('hidden')) {
             document.body.style.overflow = '';
         }
@@ -1125,37 +1144,33 @@
 
     if(closeDetailedDramaModalBtn) closeDetailedDramaModalBtn.addEventListener('click', () => {
         closeDetailedDramaModal();
-        // Reopen step 1 modal
         createPostModal.classList.remove('hidden'); createPostModal.classList.add('flex');
         document.body.style.overflow = 'hidden';
     });
 
     if(backToStep1Btn) backToStep1Btn.addEventListener('click', () => {
         closeDetailedDramaModal();
-        // Reopen step 1 modal (which should still be in the DOM, just hidden)
         createPostModal.classList.remove('hidden'); createPostModal.classList.add('flex');
         document.body.style.overflow = 'hidden';
     });
 
-    // Edit/Save/Cancel Drama Description in Step 2
     if(editDramaDescriptionBtn) editDramaDescriptionBtn.addEventListener('click', () => {
         dramaDescriptionPreview.classList.add('hidden');
         dramaDescriptionEditContainer.classList.remove('hidden');
         dramaDescriptionEdit.focus();
     });
     if(saveEditDescriptionBtn) saveEditDescriptionBtn.addEventListener('click', () => {
-        dramaStep1Description = dramaDescriptionEdit.value; // Update the stored description
+        dramaStep1Description = dramaDescriptionEdit.value;
         dramaDescriptionPreview.textContent = dramaStep1Description;
         dramaDescriptionPreview.classList.remove('hidden');
         dramaDescriptionEditContainer.classList.add('hidden');
     });
     if(cancelEditDescriptionBtn) cancelEditDescriptionBtn.addEventListener('click', () => {
-        dramaDescriptionEdit.value = dramaStep1Description; // Revert to original
+        dramaDescriptionEdit.value = dramaStep1Description;
         dramaDescriptionPreview.classList.remove('hidden');
         dramaDescriptionEditContainer.classList.add('hidden');
     });
 
-    // Series Type and Episode Number Logic (Drama Step 2)
     seriesTypeRadios.forEach(radio => {
         radio.addEventListener('change', (e) => {
             console.log(`idrama_series_select(${e.target.value})`);
@@ -1163,12 +1178,11 @@
             existingSeriesDropdownContainer.classList.toggle('hidden', !isExisting);
             episodeNumberContainer.classList.toggle('hidden', !isExisting);
             if (isExisting) {
-                // Update episode number based on selected existing series
                 const selectedSeriesOption = existingSeriesDropdown.options[existingSeriesDropdown.selectedIndex];
                 const lastEpisode = parseInt(selectedSeriesOption.text.match(/\((\d+) Episodes?\)/)?.[1] || 0);
                 episodeNumberInput.value = lastEpisode + 1;
             } else {
-                episodeNumberInput.value = 1; // Default for new series
+                episodeNumberInput.value = 1;
             }
         });
     });
@@ -1180,12 +1194,11 @@
         });
     }
 
-    // Slide Chip Selection with Credit Logic (Drama Step 2)
     slideChipButtons.forEach(button => {
         button.addEventListener('click', () => {
             if (button.classList.contains('locked')) {
                 const costText = button.querySelector('span').textContent.match(/\((\d+)\)/);
-                const cost = costText ? parseInt(costText[1]) : 100; // Default cost if not found
+                const cost = costText ? parseInt(costText[1]) : 100;
 
                 if (confirm(`Spend ${cost} credits to unlock ${button.dataset.slides} slides?`)) {
                     const currentCredits = parseInt(creditBalanceElement.textContent);
@@ -1202,11 +1215,11 @@
                         hasSufficientCredits = false;
                     }
                 } else {
-                    if (button.classList.contains('selected')) { // If they cancel selecting a locked chip that was already selected
-                        hasSufficientCredits = false; // They didn't re-confirm payment
+                    if (button.classList.contains('selected')) {
+                        hasSufficientCredits = false;
                     }
                 }
-            } else { // Not a locked chip
+            } else {
                 slideChipButtons.forEach(btn => btn.classList.remove('selected'));
                 button.classList.add('selected');
                 selectedSlidesPerEpisode = button.dataset.slides;
@@ -1229,7 +1242,7 @@
         } else if (selectedChip) {
             creditsOk = true;
         } else {
-            slidesSelected = false; // No chip selected
+            slidesSelected = false;
         }
         publishDramaBtn.disabled = !(titleValid && slidesSelected && creditsOk);
     }
@@ -1246,89 +1259,69 @@
         validatePublishDramaBtn();
     });
 
-    // Publish Drama Button (Drama Step 2)
     if(publishDramaBtn) publishDramaBtn.addEventListener('click', () => {
         let titleValid = dramaTitleInput.value.trim().length >= 3 && dramaTitleInput.value.trim().length <= 60;
-        let slidesValid = !!selectedSlidesPerEpisode;
+        // For this specific update, slidesValid will be based on the hardcoded story, not UI selection.
+        // However, we still check if *a* chip is selected for UI consistency before overriding.
+        let uiSlidesSelected = !!(slideChipContainer.querySelector('.slide-chip.selected'));
+
 
         dramaTitleError.classList.toggle('hidden', titleValid);
         if (!titleValid) dramaTitleInput.classList.add('border-red-400'); else dramaTitleInput.classList.remove('border-red-400');
 
-        slidesPerEpisodeError.classList.toggle('hidden', slidesValid);
+        slidesPerEpisodeError.classList.toggle('hidden', uiSlidesSelected);
+
 
         const selectedChipForPublish = slideChipContainer.querySelector('.slide-chip.selected');
-        let finalCreditCheck = true;
+        let finalCreditCheck = true; // Assume true unless a locked chip was selected and payment failed/cancelled
         if (selectedChipForPublish && selectedChipForPublish.classList.contains('locked')) {
             finalCreditCheck = hasSufficientCredits;
         } else if (!selectedChipForPublish) {
-             slidesValid = false;
+             uiSlidesSelected = false; // No selection in UI
              slidesPerEpisodeError.classList.remove('hidden');
         }
 
-        if (titleValid && slidesValid && finalCreditCheck) {
+
+        if (titleValid && uiSlidesSelected && finalCreditCheck) { // Check UI validity before proceeding with hardcoded story
             publishDramaBtn.innerHTML = '<div class="spinner mx-auto"></div>';
             publishDramaBtn.disabled = true;
 
-            // --- Populate readerEpisodeData with "Decision Point: Summit Standoff" ---
-            readerEpisodeData.title = "Decision Point: Summit Standoff";
-            readerEpisodeData.character = { name: "President T", avatar: `https://placehold.co/32x32/6D28D9/FFFFFF?text=PT&font=Inter` };
-            readerEpisodeData.slides = [
-                {
-                    image: `https://placehold.co/720x480/3B82F6/FFFFFF?text=${encodeURIComponent("Oval Office at dawn, American flag, president reading classified folders, warm cinematic lighting")}&font=Inter`,
-                    headline: "Alarming Intel Arrives",
-                    narrative: "Satellites track a covert missile convoy crossing an ally’s border hours before a global summit. Your team awaits the first decision.",
-                    choices: [
-                        { id: "s0c1", text: "Scramble a recon drone", nextSlide: 1 },
-                        { id: "s0c2", text: "Call the ally’s president", nextSlide: 1 },
-                        { id: "s0c3", text: "Stay silent, gather more intel", nextSlide: 1 }
-                    ]
-                },
-                {
-                    image: `https://placehold.co/720x480/3B82F6/FFFFFF?text=${encodeURIComponent("Smart-phone close-up, social feed exploding with “BREAKING” banners, reflections of the flag in glass")}&font=Inter`,
-                    headline: "Leak Hits the Timeline",
-                    narrative: "A staffer’s tweet about “unknown convoys” trends worldwide. Reporters swarm the press room and markets tremble.",
-                    choices: [
-                        { id: "s1c1", text: "Issue an official statement", nextSlide: 2 },
-                        { id: "s1c2", text: "Hold a closed-door briefing", nextSlide: 2 },
-                        { id: "s1c3", text: "Ignore the buzz—for now", nextSlide: 2 }
-                    ]
-                },
-                {
-                    image: `https://placehold.co/720x480/3B82F6/FFFFFF?text=${encodeURIComponent("Dimly lit Situation Room, glowing map with red zones, generals in tense discussion, president seated")}&font=Inter`,
-                    headline: "Time-Critical Options",
-                    narrative: "Confirmed: the convoy carries long-range missiles. Generals urge a precision strike; diplomats plead for restraint.",
-                    choices: [
-                        { id: "s2c1", text: "Authorize limited airstrike", nextSlide: 3 },
-                        { id: "s2c2", text: "Deliver a public ultimatum", nextSlide: 3 },
-                        { id: "s2c3", text: "Invite rivals to emergency talks", nextSlide: 3 }
-                    ]
-                },
-                {
-                    image: `https://placehold.co/720x480/3B82F6/FFFFFF?text=${encodeURIComponent("Grand summit hall, rows of flags, bright spotlight on presidential podium, cameras flashing")}&font=Inter`,
-                    headline: "Eyes of the Planet",
-                    narrative: "At the podium, allies wait on your announcement. The next words could calm—or ignite—the crisis.",
-                    choices: [
-                        { id: "s3c1", text: "Reveal intel and demand action", nextSlide: 4 },
-                        { id: "s3c2", text: "Downplay threat to keep calm", nextSlide: 4 },
-                        { id: "s3c3", text: "Propose a joint border task force", nextSlide: 4 }
-                    ]
-                },
-                {
-                    image: `https://placehold.co/720x480/3B82F6/FFFFFF?text=${encodeURIComponent("White House balcony by night, city lights below, president in silhouette under a full moon")}&font=Inter`,
-                    headline: "History Will Judge",
-                    narrative: "The summit ends in uneasy truce. Alone, you wonder if today’s choices secured peace—or merely delayed conflict.",
-                    choices: [
-                        { id: "s4c1", text: "Schedule follow-up talks", nextSlide: -2 }, // -2 for Finish Episode
-                        { id: "s4c2", text: "Shift focus to domestic issues", nextSlide: -2 },
-                        { id: "s4c3", text: "Order deeper intelligence ops", nextSlide: -2 }
-                    ]
-                }
-            ];
-            // Log the data that will be used by the reader
-            console.log("Publishing specific story: Decision Point: Summit Standoff", readerEpisodeData);
+            const newStoryData = {
+                "dramaTitle": "Operation Sindoor",
+                "episodeName": "Day 1",
+                "characterName": "Narendra Modi",
+                "totalSlides": 9,
+                "slides": [
+                    { "index": 1, "headline": "Dawn Briefing at Delhi HQ", "narrative": "You convene the security council at dawn, absorbing reports of militants ambushing a convoy near Pahalgam. Determined eyes lock on you as you map out possible first moves.", "imagePrompt": "prime minister at war room table, tense faces, dramatic lighting, cinematic, 8k", "choices": [{ "option": "Deploy special forces now", "next": 2 }, { "option": "Call an all-party meeting", "next": 3 }, { "option": "Address the nation first", "next": 4 }] },
+                    { "index": 2, "headline": "Rapid Deployment Orders", "narrative": "You sign a green folder authorizing an immediate airlift of elite Garud commandos toward the valley. Helicopter rotors thunder in your mind before the ink dries.", "imagePrompt": "leader issuing signed orders, helicopters silhouettes, dramatic lighting, cinematic, 8k", "choices": [{ "option": "Insert commandos near Pahalgam", "next": 5 }, { "option": "Use drones for recon", "next": 6 }, { "option": "Coordinate with local police", "next": 7 }] },
+                    { "index": 3, "headline": "Political Consensus Huddle", "narrative": "You summon party heads into Parliament’s cabinet room, pushing chai aside for grim intel maps. Achieving unity could bolster public morale but eats precious minutes.", "imagePrompt": "politicians around table, tense discussion, dramatic lighting, cinematic, 8k", "choices": [{ "option": "Seek unanimous resolution", "next": 5 }, { "option": "Invite opposition leader along", "next": 6 }, { "option": "Delay action until vote", "next": 8 }] },
+                    { "index": 4, "headline": "Nation Watches Your Broadcast", "narrative": "Studio lights flare as you stare into the lens, weighing how much truth to share. Every word could calm streets or embolden enemies beyond the camera.", "imagePrompt": "prime minister in TV studio, serious expression, dramatic lighting, cinematic, 8k", "choices": [{ "option": "Reveal limited facts", "next": 6 }, { "option": "Pledge swift justice", "next": 5 }, { "option": "Appeal for calm and unity", "next": 7 }] },
+                    { "index": 5, "headline": "Operation Crimson Dawn Greenlit", "narrative": "You authorize a covert midnight assault on three suspected hideouts. Advisors warn success hinges on speed and stealth before militants scatter into forests.", "imagePrompt": "commandos planning night raid, red-lit map, dramatic lighting, cinematic, 8k", "choices": [{ "option": "Launch night raid", "next": 9 }, { "option": "Stage psy-ops broadcast", "next": 8 }, { "option": "Wait for intel update", "next": 6 }] },
+                    { "index": 6, "headline": "Eyes in the Sky Scan Hills", "narrative": "High-altitude drones glide over cedar ridges, beaming live feeds to your tablet. Blips on infrared could be insurgents—or terrified shepherds.", "imagePrompt": "drone thermal view over mountains, leader watching tablet, dramatic lighting, cinematic, 8k", "choices": [{ "option": "Identify hideout coordinates", "next": 9 }, { "option": "Shadow convoy route", "next": 8 }, { "option": "Jam enemy comms", "next": 7 }] },
+                    { "index": 7, "headline": "Grassroots Shield Activated", "narrative": "You meet local police and village elders, forging an alliance to lock roads and guide pilgrims to safety. The valley buzzes with mixed relief and fear.", "imagePrompt": "leader shaking hands with police and villagers, dramatic lighting, cinematic, 8k", "choices": [{ "option": "Fortify checkpoints", "next": 9 }, { "option": "Evacuate civilians", "next": 8 }, { "option": "Set curfew at dusk", "next": 6 }] },
+                    { "index": 8, "headline": "The Clock Counts Down", "narrative": "Radio calls pile in: more threats, vanishing phone signals, nervous troops. You must decide how to strike without igniting a wider fire.", "imagePrompt": "digital clock over map, anxious soldiers, dramatic lighting, cinematic, 8k", "choices": [{ "option": "Approve strike", "next": 9 }, { "option": "Attempt negotiations", "next": 6 }, { "option": "Reinforce perimeters", "next": 7 }] },
+                    { "index": 9, "headline": "Midnight Assault Ignites Valley", "narrative": "Gunships roar over pine tops as commandos rappel into darkness. You grip the ops console, hearing scattered gunfire and awaiting the first crucial report.", "imagePrompt": "helicopters over dark valley, commandos descending, dramatic lighting, cinematic, 8k", "choices": [{ "option": "Monitor battle live", "next": 6 }, { "option": "Prepare victory speech", "next": 8 }, { "option": "Plan relief efforts", "next": 7 }] }
+                ]
+            };
 
+            readerEpisodeData.title = newStoryData.dramaTitle;
+            readerEpisodeData.character = {
+                name: newStoryData.characterName,
+                avatar: `https://placehold.co/32x32/FF9933/FFFFFF?text=NM&font=Inter` // Saffron-like orange
+            };
+            readerEpisodeData.slides = newStoryData.slides.map((slide, slideIdx) => ({
+                image: `https://placehold.co/720x480/4A5568/FFFFFF?text=${encodeURIComponent(slide.imagePrompt)}&font=Inter`, // Using a neutral bg for image prompts
+                headline: slide.headline,
+                narrative: slide.narrative,
+                choices: slide.choices.map((choice, choiceIdx) => ({
+                    id: `s${slideIdx}c${choiceIdx}`,
+                    text: choice.option,
+                    nextSlide: choice.next - 1 // Convert 1-indexed 'next' to 0-indexed for slide array access
+                }))
+            }));
 
-            // Simulate API call / processing
+            console.log("Publishing updated story: Operation Sindoor", JSON.parse(JSON.stringify(readerEpisodeData)));
+
             setTimeout(() => {
                 showToast("Interactive Drama '" + readerEpisodeData.title + "' published!", "success");
                 closeDetailedDramaModal();
@@ -1351,10 +1344,10 @@
             }, 1500);
         } else if (!finalCreditCheck) {
             showToast("Not enough credits to publish with selected slides.", "error");
-            publishDramaBtn.disabled = false; // Re-enable button
+            publishDramaBtn.disabled = false;
             publishDramaBtn.innerHTML = 'Publish';
         } else {
-             publishDramaBtn.disabled = false; // Re-enable button
+             publishDramaBtn.disabled = false;
              publishDramaBtn.innerHTML = 'Publish';
         }
     });
@@ -1452,16 +1445,25 @@
 
 
     function loadReaderSlide(slideIndex) {
-        if (slideIndex === -2) {
+        // Handle special slide indices for end/restart
+        if (slideIndex === -2) { // -2 signifies "Finish Episode"
             showToast("Episode Finished!", "success");
             closeDramaReader();
             return;
         }
-        if (slideIndex < 0 || !readerEpisodeData.slides || slideIndex >= readerEpisodeData.slides.length) {
-            if (slideIndex === -1) readerRestartEpisode();
-            else console.error("Invalid slide index or no slides:", slideIndex, readerEpisodeData.slides);
+         if (slideIndex === -1) { // -1 signifies "Restart Episode"
+            readerRestartEpisode();
             return;
         }
+
+        if (!readerEpisodeData.slides || slideIndex < 0 || slideIndex >= readerEpisodeData.slides.length) {
+            console.error("Invalid slide index or no slides data:", slideIndex, readerEpisodeData.slides);
+            // Fallback or error message
+            showToast("Error: Could not load slide.", "error");
+            closeDramaReader(); // Close reader on critical error
+            return;
+        }
+
         console.log(`idrama_slide_view {episodeId: "${readerEpisodeData.title}", slideIndex: ${slideIndex}}`);
         readerCurrentSlideIndex = slideIndex;
         const slide = readerEpisodeData.slides[slideIndex];
@@ -1511,7 +1513,7 @@
                     button.setAttribute('role', 'button');
                     button.setAttribute('aria-label', `Choice ${index + 1} of ${slide.choices.length}: ${choice.text}`);
                     button.dataset.choiceId = choice.id;
-                    button.dataset.nextSlide = choice.nextSlide;
+                    button.dataset.nextSlide = choice.nextSlide; // This is already 0-indexed or special (-1, -2)
                     const labelSpan = document.createElement('span');
                     labelSpan.textContent = choice.text;
                     button.appendChild(labelSpan);
@@ -1523,11 +1525,11 @@
                 noChoiceMessage.className = 'text-slate-400 text-sm text-center italic';
                 noChoiceMessage.textContent = (slideIndex === readerEpisodeData.slides.length - 1) ? "End of episode." : "The story continues...";
                 readerChoiceButtonsContainer.appendChild(noChoiceMessage);
-                 if (slideIndex === readerEpisodeData.slides.length - 1) {
+                 if (slideIndex === readerEpisodeData.slides.length - 1) { // Auto-add a finish button if it's the very last slide with no choices
                     const finishButton = document.createElement('button');
                     finishButton.className = 'reader-choice-button w-full flex items-center justify-center p-3 text-white text-sm mt-2';
                     finishButton.textContent = "Finish Episode";
-                    finishButton.onclick = () => loadReaderSlide(-2);
+                    finishButton.onclick = () => loadReaderSlide(-2); // -2 for finish
                     readerChoiceButtonsContainer.appendChild(finishButton);
                 }
             }
@@ -1564,7 +1566,7 @@
         const selectedButton = event.currentTarget;
         if (selectedButton.disabled) return;
         const choiceId = selectedButton.dataset.choiceId;
-        const nextSlide = parseInt(selectedButton.dataset.nextSlide);
+        const nextSlide = parseInt(selectedButton.dataset.nextSlide); // Already 0-indexed or special
         console.log(`idrama_choice_select {choiceId: "${choiceId}", slideIndex: ${readerCurrentSlideIndex}, nextSlide: ${nextSlide}}`);
 
         readerChoiceButtonsContainer.querySelectorAll('.reader-choice-button').forEach(btn => btn.disabled = true);
@@ -1582,6 +1584,7 @@
     }
 
     if(readerRestartEpisodeBtn) readerRestartEpisodeBtn.addEventListener('click', () => {
+        // Use custom modal/confirm for better UX in a real app
         if(confirm("Are you sure you want to restart the episode?")) readerRestartEpisode();
     });
     if(readerReportContentBtn) readerReportContentBtn.addEventListener('click', () => {
@@ -1603,16 +1606,23 @@
         if (choicesAvailable) return;
 
         const swipeThreshold = 50;
-        if (readerTouchendX < readerTouchstartX - swipeThreshold) {
+        if (readerTouchendX < readerTouchstartX - swipeThreshold) { // Swiped left
             const nextSlideIndex = readerCurrentSlideIndex + 1;
             if (nextSlideIndex < readerEpisodeData.slides.length) {
                 loadReaderSlide(nextSlideIndex);
-            } else if (readerEpisodeData.slides[readerCurrentSlideIndex]?.choices[0]?.nextSlide === -1 || readerEpisodeData.slides[readerCurrentSlideIndex]?.choices[0]?.nextSlide === -2) {
-                const lastChoiceButton = readerChoiceButtonsContainer.querySelector('.reader-choice-button');
-                if(lastChoiceButton) handleReaderChoiceSelection({currentTarget: lastChoiceButton});
+            } else { // Potentially on the last slide, check if there's a default "finish" or "restart" action
+                const lastSlide = readerEpisodeData.slides[readerCurrentSlideIndex];
+                if (lastSlide && lastSlide.choices && lastSlide.choices.length > 0) {
+                    const firstChoiceOfLastSlide = lastSlide.choices[0];
+                    if (firstChoiceOfLastSlide.nextSlide === -1 || firstChoiceOfLastSlide.nextSlide === -2) {
+                         // Simulate making the first choice if it's a terminal one
+                         const firstChoiceButton = readerChoiceButtonsContainer.querySelector('.reader-choice-button');
+                         if(firstChoiceButton) handleReaderChoiceSelection({currentTarget: firstChoiceButton});
+                    }
+                }
             }
         }
-        if (readerTouchendX > readerTouchstartX + swipeThreshold && readerCurrentSlideIndex > 0) {
+        if (readerTouchendX > readerTouchstartX + swipeThreshold && readerCurrentSlideIndex > 0) { // Swiped right
             loadReaderSlide(readerCurrentSlideIndex - 1);
         }
     }
@@ -1629,9 +1639,15 @@
             const nextSlideIndex = readerCurrentSlideIndex + 1;
             if (nextSlideIndex < readerEpisodeData.slides.length) {
                 loadReaderSlide(nextSlideIndex);
-            } else if (readerEpisodeData.slides[readerCurrentSlideIndex]?.choices[0]?.nextSlide === -1 || readerEpisodeData.slides[readerCurrentSlideIndex]?.choices[0]?.nextSlide === -2) {
-                const lastChoiceButton = readerChoiceButtonsContainer.querySelector('.reader-choice-button');
-                if(lastChoiceButton) handleReaderChoiceSelection({currentTarget: lastChoiceButton});
+            } else {
+                const lastSlide = readerEpisodeData.slides[readerCurrentSlideIndex];
+                if (lastSlide && lastSlide.choices && lastSlide.choices.length > 0) {
+                    const firstChoiceOfLastSlide = lastSlide.choices[0];
+                     if (firstChoiceOfLastSlide.nextSlide === -1 || firstChoiceOfLastSlide.nextSlide === -2) {
+                         const firstChoiceButton = readerChoiceButtonsContainer.querySelector('.reader-choice-button');
+                         if(firstChoiceButton) handleReaderChoiceSelection({currentTarget: firstChoiceButton});
+                    }
+                }
             }
         } else if (e.key === 'ArrowLeft' && readerCurrentSlideIndex > 0 && !choicesAvailable) {
             loadReaderSlide(readerCurrentSlideIndex - 1);
